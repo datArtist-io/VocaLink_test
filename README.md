@@ -6,6 +6,21 @@ Live site: [vocalinktest.vercel.app](https://vocalinktest.vercel.app)
 
 The Discord bot itself lives in a separate repository: [datArtist-io/VocaLink-discord-bot](https://github.com/datArtist-io/VocaLink-discord-bot).
 
+## VocaLink Lite: the live translator
+
+[vocalinktest.vercel.app/app](https://vocalinktest.vercel.app/app/) is a working translator that runs entirely in the browser, on top of the same koi pond. It is the low-cost version of VocaLink: nothing runs on a server, so the only cost is Deepgram's speech recognition (about $0.46 an hour, and new Deepgram accounts get $200 of free credit).
+
+How it works:
+
+1. Audio comes from the microphone, or from a shared browser tab or screen, so it can listen to Discord running in another tab with no extra software.
+2. An audio worklet turns it into 16 kHz audio, lifts quiet voices, and streams it to Deepgram's live API (`nova-3`, falling back to `nova-2` for languages it does not cover). Taglish uses the Tagalog model; the "mixed" option uses Deepgram's multilingual mode.
+3. Words appear while people are still talking. Each finished sentence is translated with Google Translate's free web endpoint, or with Claude if you add an Anthropic key in Settings.
+4. The browser can read each translation aloud with its own voices, which costs nothing.
+
+It also tells speakers apart (click a name to rename it), floats the transcript in an always-on-top window in Chrome and Edge, shows full-screen captions for screen sharing, and saves the conversation as text or `.srt` subtitles. Shortcuts: space starts and stops, C opens captions, F floats the transcript.
+
+Each person uses their own Deepgram key, which stays in their browser. The whole app is one file, `app/index.html`.
+
 ## What is on the page
 
 The site is one file, `index.html`, with its CSS, shaders and JavaScript inline. The content scrolls over the pond in frosted-glass panels, with open stretches of water between some sections. From top to bottom:
