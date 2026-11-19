@@ -329,6 +329,7 @@ dialog.wide{max-width:min(880px,calc(100vw - 28px))}
         <div class="field"><label for="fromSel">They speak</label><select id="fromSel"></select></div>
         <div class="field"><label for="toSel">You read</label><select id="toSel"></select></div>
       </div>
+      <p class="hint" id="autoHint" hidden>Listens two ways at once so it catches Tagalog and Taglish as well as English, French, Spanish and seven more. Choosing one language halves the Deepgram cost.</p>
 
       <div class="toggles">
         <label class="tg"><span>Tell speakers apart<small>Names each voice in the transcript</small></span><span class="sw"><input type="checkbox" id="optSpk"><i></i></span></label>
@@ -846,8 +847,9 @@ const EL = { scroll: $('#scroll'), feed: $('#feed'), empty: $('#empty'), live: $
 
 /* ---------- languages ---------- */
 const FROM = [
+  ['auto', 'Auto-detect'],
   ['tl', 'Taglish'],
-  ['multi', 'Mixed, auto-detect (10 major languages)'],
+  ['multi', '10 major languages, no Tagalog'],
   ['en', 'English'], ['es', 'Spanish'], ['fr', 'French'], ['de', 'German'], ['it', 'Italian'], ['pt', 'Portuguese'],
   ['nl', 'Dutch'], ['ja', 'Japanese'], ['ko', 'Korean'], ['zh', 'Chinese'], ['hi', 'Hindi'], ['ru', 'Russian'],
   ['id', 'Indonesian'], ['ms', 'Malay'], ['vi', 'Vietnamese'], ['th', 'Thai'], ['tr', 'Turkish'], ['uk', 'Ukrainian'], ['pl', 'Polish'],
@@ -865,7 +867,7 @@ const langName = (c) => LANG_NAME[(c || '').split('-')[0]] || c;
 /* ---------- state ---------- */
 const S = {
   key: store.get('dgKey', ''), claudeKey: store.get('claudeKey', ''),
-  from: store.get('from', 'tl'), to: store.get('to', 'en'), src: store.get('src', 'mic'), device: store.get('device', ''),
+  from: store.get('from2', 'auto'), to: store.get('to', 'en'), src: store.get('src', 'mic'), device: store.get('device', ''),
   diarize: store.get('diarize', true), live: store.get('live', true), speak: store.get('speak', false),
   voice: store.get('voice', ''), rate: store.get('rate', 1.05), engine: store.get('engine', 'google'), boost: store.get('boost', true),
 };
@@ -893,7 +895,7 @@ document.addEventListener('pointermove', (e) => {
 /* ---------- controls ---------- */
 const fill = (sel, list, v) => { sel.innerHTML = ''; for (const [c, n] of list) sel.add(new Option(n, c)); sel.value = v; };
 fill($('#fromSel'), FROM, S.from); fill($('#toSel'), TO, S.to);
-if (!$('#fromSel').value) { S.from = 'tl'; $('#fromSel').value = 'tl'; }
+if (!$('#fromSel').value) { S.from = 'auto'; $('#fromSel').value = 'auto'; }
 if (!$('#toSel').value) { S.to = 'en'; $('#toSel').value = 'en'; }
 const pairLbl = () => { $('#pairLbl').textContent = 'in ' + langName(S.to); };
 pairLbl();
@@ -909,7 +911,9 @@ seg($('#srcSeg'), S.src, (v) => { S.src = v; save('src'); srcUI(); if (running) 
 function srcUI() { $('#devField').hidden = S.src !== 'mic'; $('#tabHint').hidden = S.src !== 'tab'; }
 srcUI();
 
-$('#fromSel').onchange = (e) => { S.from = e.target.value; save('from'); if (running) restart(); };
+$('#fromSel').onchange = (e) => { S.from = e.target.value; store.set('from2', S.from); autoHint(); if (running) restart(); };
+function autoHint() { $('#autoHint').hidden = S.from !== 'auto'; }
+autoHint();
 $('#toSel').onchange = (e) => { S.to = e.target.value; save('to'); pairLbl(); loadVoices(); trCache.clear(); };
 $('#devSel').onchange = (e) => { S.device = e.target.value; save('device'); if (running) restart(); };
 
@@ -1229,9 +1233,16 @@ class Tap extends AudioWorkletProcessor {
 registerProcessor('tap', Tap);`;
 
 let selfVoice = false;
-let running = false, stream = null, ctx = null, node = null, srcNode = null;
-let ws = null, wsOpen = false, model = 'nova-3', triedFallback = false, retries = 0, keepTimer = 0, retryTimer = 0, gen = 0;
-let pending = [], interim = '', audioSec = 0, backlog = [], level = 0, sessionT0 = 0;
+let running = false, stream = null, ctx = null, node = null, srcNode = null, gen = 0, starting = false;
+// One "lane" per Deepgram connection. Auto-detect runs two lanes on the same audio: the
+// multilingual model (10 major languages) and the Tagalog model (Tagalog and Taglish), and keeps
+// whichever heard each sentence more confidently. Word times are put on one shared audio clock.
+let lanes = [], audioSec = 0, streamSec = 0, clock = 0, level = 0, sessionT0 = 0, lastCut = -1, lastWinner = null, decideTimer = 0;
+const anyOpen = () => lanes.some(l => l.open);
+const isAuto = () => lanes.length > 1;
+const laneLanguages = () => (S.from === 'auto' ? ['multi', 'tl'] : [S.from]);
+const newLane = (language) => ({ language, model: 'nova-3', triedFallback: false, ws: null, open: false, retries: 0, keepTimer: 0, retryTimer: 0, backlog: [], words: [], interim: '', ema: 0.6, offset: 0, dead: false });
+const listeningSub = () => (S.src === 'tab' ? 'Hearing the shared tab' : 'Hearing your microphone') + (S.from === 'auto' ? ', detecting the language' : '');
 
 function setGo(state, title, sub) {
   const b = $('#goBtn'); b.dataset.state = state;
@@ -1264,92 +1275,129 @@ async function getStream() {
   }
 }
 
-function dgUrl() {
-  const p = new URLSearchParams({ model, interim_results: 'true', smart_format: 'true', punctuate: 'true', endpointing: '300', utterance_end_ms: '1000', vad_events: 'true', encoding: 'linear16', sample_rate: '16000', channels: '1', language: S.from });
+function dgUrl(l) {
+  const p = new URLSearchParams({ model: l.model, interim_results: 'true', smart_format: 'true', punctuate: 'true', endpointing: '300', utterance_end_ms: '1000', vad_events: 'true', encoding: 'linear16', sample_rate: '16000', channels: '1', language: l.language });
   if (S.diarize) p.set('diarize', 'true');
   return 'wss://api.deepgram.com/v1/listen?' + p;
 }
 
-function connect() {
+function connect(l) {
   const my = gen;
-  wsOpen = false;
+  l.open = false;
   let sock;
-  try { sock = new WebSocket(dgUrl(), ['token', S.key]); } catch { return fail('Could not reach Deepgram.'); }
-  ws = sock;
+  try { sock = new WebSocket(dgUrl(l), ['token', S.key]); } catch { return laneFailed(l, 'Could not reach Deepgram.'); }
+  l.ws = sock;
   sock.binaryType = 'arraybuffer';
   sock.onopen = () => {
-    if (my !== gen) { try { sock.close(); } catch {} return; }
-    wsOpen = true; retries = 0;
-    setGo('live', 'Listening', S.src === 'tab' ? 'Hearing the shared tab' : 'Hearing your microphone');
-    showLive(interim, pending.map(p => p.text).join(' '));
-    for (const b of backlog) sock.send(b);
-    audioSec += backlog.length * 0.04;
-    backlog = [];
-    clearInterval(keepTimer);
-    keepTimer = setInterval(() => { if (sock.readyState === 1) sock.send(JSON.stringify({ type: 'KeepAlive' })); }, 8000);
+    if (my !== gen || l.dead) { try { sock.close(); } catch {} return; }
+    l.open = true; l.retries = 0;
+    l.offset = clock - l.backlog.length * 0.04; // this connection's time zero on the shared clock
+    setGo('live', 'Listening', listeningSub());
+    for (const b of l.backlog) sock.send(b);
+    streamSec += l.backlog.length * 0.04;
+    l.backlog = [];
+    clearInterval(l.keepTimer);
+    l.keepTimer = setInterval(() => { if (sock.readyState === 1) sock.send(JSON.stringify({ type: 'KeepAlive' })); }, 8000);
+    render();
   };
-  sock.onmessage = (ev) => { if (my === gen) onMsg(ev.data); };
+  sock.onmessage = (ev) => { if (my === gen && !l.dead) onMsg(l, ev.data); };
   sock.onerror = () => {};
   sock.onclose = (ev) => {
-    if (my !== gen) return;
-    clearInterval(keepTimer);
-    const wasOpen = wsOpen; wsOpen = false;
+    if (my !== gen || l.dead) return;
+    clearInterval(l.keepTimer);
+    const wasOpen = l.open; l.open = false;
     if (!running) return;
     if (!wasOpen) {
-      if (model === 'nova-3' && !triedFallback) { triedFallback = true; model = 'nova-2'; return connect(); }
-      return fail(ev.code === 1008 || ev.code === 4001 || /auth|credential|unauthor|forbidden/i.test(ev.reason || '')
-        ? 'Deepgram did not accept the key. You can change it in Settings.'
-        : 'Deepgram would not connect. Check your key or internet, or try another language.');
+      if (l.model === 'nova-3' && !l.triedFallback) { l.triedFallback = true; l.model = 'nova-2'; return connect(l); }
+      const auth = ev.code === 1008 || ev.code === 4001 || /auth|credential|unauthor|forbidden/i.test(ev.reason || '');
+      return laneFailed(l, auth ? 'Deepgram did not accept the key. You can change it in Settings.' : 'Deepgram would not connect. Check your key or internet, or try another language.', auth);
     }
-    flush();
-    if (retries++ >= 6) return fail('Lost the connection to Deepgram. Press start to try again.');
-    setGo('connecting', 'Reconnecting', 'What people say is kept meanwhile'); spin();
-    retryTimer = setTimeout(() => { if (running && my === gen) connect(); }, Math.min(4000, 250 * 2 ** retries));
+    decide();
+    if (l.retries++ >= 6) return laneFailed(l, 'Lost the connection to Deepgram. Press start to try again.');
+    if (!anyOpen()) { setGo('connecting', 'Reconnecting', 'What people say is kept meanwhile'); spin(); }
+    l.retryTimer = setTimeout(() => { if (running && my === gen && !l.dead) connect(l); }, Math.min(4000, 250 * 2 ** l.retries));
   };
 }
 
-function onMsg(data) {
+function laneFailed(l, msg, fatal = false) {
+  l.dead = true; l.open = false; l.backlog = []; l.words = [];
+  clearInterval(l.keepTimer); clearTimeout(l.retryTimer);
+  if (fatal || !lanes.some(x => !x.dead)) return fail(msg);
+  // auto-detect carries on with the other model
+  if (anyOpen()) toast(l.language === 'tl' ? 'Tagalog detection is not available right now. Other languages still work.' : 'Only Tagalog and Taglish can be detected right now.', true);
+}
+
+function onMsg(l, data) {
   let m; try { m = JSON.parse(data); } catch { return; }
-  if (m.type === 'UtteranceEnd') { interim = ''; return flush(); }
+  if (m.type === 'UtteranceEnd') { l.interim = ''; return trigger(l, true); }
   if (m.type !== 'Results') return;
   const alt = m.channel && m.channel.alternatives && m.channel.alternatives[0];
   if (!alt) return;
   const text = (alt.transcript || '').trim();
-  const st = +m.start || 0, du = +m.duration || 0;
-  if (m.is_final) {
-    interim = '';
-    if (text) {
-      const words = S.diarize && Array.isArray(alt.words) && alt.words.length ? alt.words : null;
-      if (words) {
-        for (const w of words) {
-          const s = typeof w.speaker === 'number' ? w.speaker : null;
-          const last = pending[pending.length - 1];
-          const word = w.punctuated_word || w.word || '';
-          if (!word) continue;
-          if (last && last.spk === s) { last.text += ' ' + word; last.end = +w.end || st + du; }
-          else pending.push({ spk: s, text: word, start: +w.start || st, end: +w.end || st + du });
-        }
-      } else {
-        const last = pending[pending.length - 1];
-        if (last) { last.text += ' ' + text; last.end = st + du; }
-        else pending.push({ spk: null, text, start: st, end: st + du });
-      }
+  const st = (+m.start || 0) + l.offset, du = +m.duration || 0;
+  if (!m.is_final) { l.interim = text; render(); return; }
+  l.interim = '';
+  if (text) {
+    const list = Array.isArray(alt.words) && alt.words.length ? alt.words : [{ punctuated_word: text, start: m.start || 0, end: (m.start || 0) + du, confidence: alt.confidence }];
+    let cs = 0, cn = 0;
+    for (const w of list) {
+      const word = w.punctuated_word || w.word || '';
+      if (!word) continue;
+      const s0 = w.start != null ? +w.start + l.offset : st, e0 = w.end != null ? +w.end + l.offset : st + du;
+      if (lanes.length > 1 && e0 <= lastCut + 0.05) continue; // these words were already taken from the other lane
+      const c = typeof w.confidence === 'number' ? w.confidence : (typeof alt.confidence === 'number' ? alt.confidence : 0.5);
+      l.words.push({ w: word, spk: S.diarize && typeof w.speaker === 'number' ? w.speaker : null, s: s0, e: e0, c });
+      cs += c; cn++;
     }
-    const len = pending.reduce((n, p) => n + p.text.length, 0);
-    if (m.speech_final || len > 240 || pending.length > 2) flush();
-    else showLive('', pending.map(p => p.text).join(' '));
-  } else {
-    interim = text;
-    showLive(text, pending.map(p => p.text).join(' '));
+    if (cn) l.ema = l.ema * 0.6 + (cs / cn) * 0.4;
   }
+  trigger(l, !!m.speech_final);
 }
 
-function flush() {
-  if (!pending.length) { showLive(interim, ''); return; }
-  const groups = pending; pending = [];
+function groupWords(words) {
+  const out = [];
+  for (const w of words) {
+    const last = out[out.length - 1];
+    if (last && last.spk === w.spk) { last.text += ' ' + w.w; last.end = w.e; }
+    else out.push({ spk: w.spk, text: w.w, start: w.s, end: w.e });
+  }
+  return out;
+}
+
+function trigger(l, final) {
+  const len = l.words.reduce((n, w) => n + w.w.length + 1, 0);
+  if (final || len > 240 || groupWords(l.words).length > 2) {
+    if (!isAuto()) { decide(); return; }
+    // give the other model a moment to finish the same words, then compare
+    clearTimeout(decideTimer);
+    decideTimer = setTimeout(decide, 300);
+  }
+  render();
+}
+
+/** Turn the best lane's words into transcript lines, and drop the same words from the others. */
+function decide() {
+  clearTimeout(decideTimer);
+  const cand = lanes.filter(l => !l.dead && l.words.length);
+  if (!cand.length) { render(); return; }
+  const score = (l) => l.words.reduce((a, w) => a + w.c, 0) / l.words.length + (l === lastWinner ? 0.03 : 0);
+  const win = cand.reduce((a, b) => (score(b) > score(a) ? b : a));
+  lastWinner = win;
+  const words = win.words;
+  lastCut = Math.max(lastCut, ...words.map(w => w.e));
+  for (const l of lanes) l.words = l.words.filter(w => w.e > lastCut + 0.05);
   const now = sessionT0 ? (performance.now() - sessionT0) / 1000 : 0;
-  for (const g of groups) if (g.text.trim()) { const d = Math.max(0.6, (g.end || 0) - (g.start || 0)); addEntry(g.spk, g.text.trim(), Math.max(0, now - d), now); }
-  showLive(interim, '');
+  for (const g of groupWords(words)) if (g.text.trim()) { const d = Math.max(0.6, (g.end || 0) - (g.start || 0)); addEntry(g.spk, g.text.trim(), Math.max(0, now - d), now); }
+  render();
+}
+const flush = decide;
+
+/** The live line follows whichever lane is doing better right now. */
+function render() {
+  const live = lanes.filter(l => !l.dead && (l.words.length || l.interim));
+  if (!live.length) { showLive('', ''); return; }
+  const lead = live.reduce((a, b) => ((b === lastWinner ? b.ema + 0.03 : b.ema) > (a === lastWinner ? a.ema + 0.03 : a.ema) ? b : a));
+  showLive(lead.interim, lead.words.map(w => w.w).join(' '));
 }
 
 async function start() {
@@ -1358,7 +1406,8 @@ async function start() {
   if (!navigator.mediaDevices) return toast('Audio needs a secure (https) page.', true);
   starting = true;
   if (!sessionT0) sessionT0 = performance.now();
-  running = true; gen++; model = 'nova-3'; triedFallback = false; retries = 0; backlog = []; pending = []; interim = '';
+  running = true; gen++;
+  lanes = laneLanguages().map(newLane); lastCut = -1; lastWinner = null; clock = 0;
   setGo('connecting', 'Connecting', S.src === 'tab' ? 'Choose a tab and share its audio' : 'Allow the microphone if asked'); spin();
   try {
     stream = await getStream();
@@ -1376,17 +1425,23 @@ async function start() {
     node.port.postMessage({ boost: S.boost && S.src === 'mic' });
     node.port.onmessage = ({ data }) => {
       level = Math.min(1, data.rms * 9);
-      window.__vlLevel = wsOpen ? level : 0;
+      const open = anyOpen();
+      window.__vlLevel = open ? level : 0;
       if (!running) return;
       if (selfVoice && 'speechSynthesis' in window && speechSynthesis.speaking) new Int16Array(data.pcm).fill(0);
-      if (ws && ws.readyState === 1) { ws.send(data.pcm); audioSec += 0.04; }
-      else { backlog.push(data.pcm); if (backlog.length > 200) backlog.shift(); }
+      clock += 0.04;
+      if (open) audioSec += 0.04;
+      for (const l of lanes) {
+        if (l.dead) continue;
+        if (l.open && l.ws && l.ws.readyState === 1) { l.ws.send(data.pcm); streamSec += 0.04; }
+        else { l.backlog.push(data.pcm); if (l.backlog.length > 200) l.backlog.shift(); }
+      }
     };
     srcNode.connect(node);
     const sink = ctx.createGain(); sink.gain.value = 0; node.connect(sink); sink.connect(ctx.destination);
     stream.getAudioTracks().forEach(t => t.addEventListener('ended', () => running && stop('The audio source closed')));
     showLive('', '');
-    connect();
+    lanes.forEach(connect);
   } catch (e) {
     const msg = e.friendly ? e.message
       : e.name === 'NotAllowedError' ? (S.src === 'tab' ? 'Sharing was cancelled.' : 'The microphone is blocked. Allow it from the address bar, then try again.')
@@ -1396,22 +1451,24 @@ async function start() {
     fail(msg, !(e.name === 'NotAllowedError' && S.src === 'tab'));
   } finally { starting = false; }
 }
-let starting = false;
 
 function teardown() {
   gen++;
-  clearInterval(keepTimer); clearTimeout(retryTimer); cancelAnimationFrame(spinRaf);
-  if (ws) {
-    const w = ws; ws = null;
-    try { if (w.readyState === 1) w.send(JSON.stringify({ type: 'CloseStream' })); } catch {}
-    setTimeout(() => { try { w.close(1000); } catch {} }, 600);
+  clearTimeout(decideTimer); cancelAnimationFrame(spinRaf);
+  for (const l of lanes) {
+    clearInterval(l.keepTimer); clearTimeout(l.retryTimer);
+    const w = l.ws; l.ws = null; l.open = false;
+    if (w) {
+      try { if (w.readyState === 1) w.send(JSON.stringify({ type: 'CloseStream' })); } catch {}
+      setTimeout(() => { try { w.close(1000); } catch {} }, 600);
+    }
   }
-  wsOpen = false;
+  lanes = [];
   try { srcNode && srcNode.disconnect(); node && node.disconnect(); } catch {}
   if (node) node.port.onmessage = null;
   if (ctx) { ctx.close().catch(() => {}); ctx = null; }
   if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
-  node = null; srcNode = null; level = 0; window.__vlLevel = 0; backlog = [];
+  node = null; srcNode = null; level = 0; window.__vlLevel = 0;
 }
 function stop(why) {
   if (!running) return;
@@ -1420,7 +1477,7 @@ function stop(why) {
   showLive('', '');
 }
 function fail(msg, bad = true) {
-  running = false; pending = []; interim = ''; teardown();
+  running = false; teardown();
   setGo('idle', 'Start listening', 'Or press the space bar');
   showLive('', '');
   toast(msg, bad, 6500);
@@ -1437,8 +1494,8 @@ $('#goBtn').onclick = () => (running ? stop() : start());
 setInterval(() => {
   const s = Math.round(audioSec);
   $('#mTime').textContent = `${Math.floor(s / 60)}:${pad(s % 60)}`;
-  $('#mCost').textContent = '$' + (audioSec / 3600 * 0.46).toFixed(2);
-  $('#goBtn').style.setProperty('--lvl', running && wsOpen ? Math.min(1, level * 1.2).toFixed(3) : 0);
+  $('#mCost').textContent = '$' + (streamSec / 3600 * 0.46).toFixed(2);
+  $('#goBtn').style.setProperty('--lvl', running && anyOpen() ? Math.min(1, level * 1.2).toFixed(3) : 0);
 }, 100);
 
 /* ---------- keys and settings ---------- */
@@ -1508,7 +1565,7 @@ addEventListener('hashchange', fromHash);
 /* first visit */
 fromHash();
 if (!S.key && !plansDlg.open) setTimeout(() => { if (!S.key && !$('#keyDlg').open && !plansDlg.open) openKey(); }, 1100);
-window.__vl = { S, log, onMsg, flush, get running() { return running; }, get ws() { return ws; } };
+window.__vl = { S, log, get running() { return running; }, get lanes() { return lanes; } };
 })();
 </script>
 </body>
