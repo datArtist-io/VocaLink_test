@@ -291,13 +291,105 @@ body.explore .explore-bar{opacity:1;transform:translate(-50%,0);pointer-events:a
   .paper-head h1{font-size:20px}
   .paper-head h1 em{display:none}
   .tools{flex-wrap:nowrap;gap:4px}
-  body.running .console{gap:0;padding:12px 14px}
-  body.running .console>:not(.go-wrap){display:none}
   body.running .go{width:68px;height:68px}
   body.running .go .ring{-webkit-mask:radial-gradient(circle, transparent 30px, #000 31px);mask:radial-gradient(circle, transparent 30px, #000 31px)}
   body.running .go .disc{inset:6px}
   body.running .paper{min-height:calc(100dvh - 190px)}
 }
+
+/* ===== layout: the pond is the stage ===== */
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;margin:0}
+.veil{background:radial-gradient(140% 100% at 50% 45%,transparent 45%,rgba(2,8,11,.5) 100%)}
+.app{display:flex;flex-direction:column;min-height:100vh;min-height:100dvh;padding-bottom:0}
+.stage{display:flex;justify-content:center;flex:1;min-height:0;padding-bottom:116px}
+.reader{position:relative;isolation:isolate;width:min(820px,100%);display:flex;flex-direction:column;height:calc(100vh - 76px - 116px);height:calc(100dvh - 76px - 116px)}
+.reader::before{content:"";position:absolute;inset:-30px -120px -10px;z-index:-1;pointer-events:none;
+  background:radial-gradient(58% 60% at 50% 52%,rgba(2,9,12,.78) 0%,rgba(2,9,12,.55) 55%,rgba(2,9,12,0) 100%)}
+.scroll{flex:1;overflow-y:auto;padding:12px 8px 0;-webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 56px);mask-image:linear-gradient(to bottom,transparent 0,#000 56px);scrollbar-width:thin;scrollbar-color:var(--line2) transparent}
+.feed{padding-top:40px}
+.entry{grid-template-columns:72px 1fr;padding:18px 0;border-bottom:1px solid rgba(170,230,215,.08)}
+.entry time{white-space:nowrap}
+body:not(.running) .live-idle{visibility:hidden}
+.entry time{color:#5f7b76}
+.orig{color:#a9c1bb;text-shadow:0 1px 12px rgba(0,0,0,.6)}
+.tr{font-size:clamp(23px,2.3vw,28px);line-height:1.3;color:#f2f7f4;text-shadow:0 2px 20px rgba(0,0,0,.55)}
+.chip-name,.chip{font-size:12.5px}
+.empty{min-height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;max-width:none;padding:0 12px 28px}
+.empty h2{font:300 clamp(46px,6.2vw,82px)/1 var(--serif);letter-spacing:-.025em;margin:0 0 22px;color:#f2f7f4;text-shadow:0 4px 40px rgba(0,0,0,.6)}
+.empty h2 em{color:var(--acc);font-style:italic}
+.empty .lead{max-width:520px;margin:0 auto;color:#b8cdc7;font-size:16.5px;line-height:1.6;text-shadow:0 1px 14px rgba(0,0,0,.7)}
+.empty .also{margin:22px auto 0;max-width:440px;font-size:14px;color:var(--mute)}
+.live{border-top:0;padding:10px 8px 6px;min-height:84px;background:none}
+.live[data-on="1"]{background:none}
+.live-tr{font-size:clamp(21px,2vw,25px);color:#e6efe9;opacity:.62}
+
+/* ===== the dock ===== */
+.dock{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:10;display:flex;align-items:center;gap:12px;
+  padding:9px 10px 9px 9px;border-radius:999px;width:max-content;max-width:calc(100vw - 32px);
+  background:linear-gradient(180deg,rgba(18,46,52,.72),rgba(6,20,26,.78));
+  box-shadow:inset 0 1px 0 rgba(210,255,244,.16),inset 0 0 0 1px rgba(170,230,215,.14),0 24px 60px -18px rgba(0,0,0,.85),0 2px 10px rgba(0,0,0,.3)}
+.lg .dock{backdrop-filter:blur(18px) saturate(160%)}
+.dock .sep{width:1px;height:26px;background:rgba(170,230,215,.14);flex:none}
+.go{width:56px;height:56px;border-radius:50%;flex:none;display:grid;place-items:center;color:#2a1200;
+  background:radial-gradient(circle at 34% 28%,#ffc196 0%,#ff9550 38%,#f0712c 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.55),inset 0 -2px 6px rgba(150,50,0,.35),0 10px 26px -8px rgba(255,120,40,.75)}
+.go:hover{transform:scale(1.06)}
+.go .ring{inset:-6px;-webkit-mask:radial-gradient(circle,transparent 31px,#000 32px);mask:radial-gradient(circle,transparent 31px,#000 32px);
+  background:conic-gradient(var(--glow) calc(var(--lvl,0) * 1turn),transparent 0)}
+.go .ico{width:24px;height:24px;grid-area:1/1}
+.go .stop{position:static}
+.go[data-state="live"] .stop{color:#2a1200}
+.go[data-state="live"]{background:radial-gradient(circle at 34% 28%,#ffd2b3 0%,#ffa064 40%,#f0712c 100%)}
+.go[data-state="connecting"] .ring{background:conic-gradient(from calc(var(--spin,0) * 1turn),var(--glow) 0 .18turn,transparent 0)}
+.go-text{min-width:132px;max-width:190px}
+.go-text b{font:600 14.5px/1.15 var(--sans);letter-spacing:-.005em}
+.go-text span{font-size:12px;margin-top:3px;min-height:0;line-height:1.3;color:var(--mute)}
+.dock .seg{grid-template-columns:auto auto;padding:3px;background:rgba(2,10,14,.5);box-shadow:inset 0 0 0 1px rgba(170,230,215,.12);backdrop-filter:none}
+.dock .seg button{display:inline-flex;align-items:center;gap:6px;padding:7px 11px;font-size:12.5px}
+.dock .seg button svg{width:15px;height:15px}
+.dock .seg .thumb{top:3px;bottom:3px;left:3px;width:calc(50% - 3px)}
+.pair{display:flex;align-items:center;gap:2px;padding:3px 4px;border-radius:999px;background:rgba(2,10,14,.5);box-shadow:inset 0 0 0 1px rgba(170,230,215,.12)}
+.pair select{width:auto;max-width:148px;background-color:transparent;box-shadow:none;padding:7px 24px 7px 10px;background-position:right 8px center;font-weight:600;font-size:13px;border-radius:999px}
+.pair select:hover{background-color:rgba(127,240,220,.06);box-shadow:none}
+.pair .arrow{width:14px;height:14px;color:var(--acc);flex:none}
+.opts,.dock .tools{display:flex;gap:4px;flex-wrap:nowrap}
+.tg.opt{position:relative;width:36px;height:36px;padding:0;margin:0;border-radius:50%;display:grid;place-items:center;color:var(--mute);cursor:pointer;transition:background .25s,color .25s,box-shadow .25s}
+.tg.opt:hover{background:rgba(127,240,220,.07);color:var(--fg)}
+.tg.opt input{position:absolute;inset:0;opacity:0;margin:0;cursor:pointer}
+.tg.opt svg{width:18px;height:18px;pointer-events:none}
+.tg.opt:has(input:checked){color:var(--glow);background:rgba(127,240,220,.12);box-shadow:inset 0 0 0 1px rgba(127,240,220,.35)}
+.tg.opt:has(input:focus-visible){outline:2px solid var(--glow);outline-offset:2px}
+.dock .tools .g.icon{width:36px;height:36px;background:transparent;box-shadow:none;color:var(--mute)}
+.dock .tools .g.icon:hover{color:var(--fg);background:rgba(127,240,220,.07)}
+.dock .tools .g.icon.on{color:var(--glow)}
+.dock .tools .g::after{display:none}
+.dock-hint{position:fixed;left:50%;bottom:94px;transform:translateX(-50%);z-index:10;margin:0;padding:10px 16px;border-radius:14px;font-size:13px;color:var(--mute);max-width:min(520px,calc(100vw - 32px));text-align:center}
+body.running .dock-hint{display:none}
+.voice{display:grid;grid-template-columns:1fr 92px;gap:10px;align-items:center}
+body.explore .dock,body.explore .dock-hint{opacity:0;pointer-events:none}
+.dock,.dock-hint{transition:opacity .6s var(--ease)}
+@media (max-width:1060px){
+  .go-text{min-width:0;max-width:130px}
+  .go-text span{display:none}
+}
+@media (max-width:860px){
+  .dock{left:12px;right:12px;bottom:12px;transform:none;width:auto;max-width:none;border-radius:24px;flex-wrap:wrap;justify-content:center;row-gap:8px;padding:10px}
+  .dock .sep{display:none}
+  .go-text{flex:1;max-width:none}
+  .stage{padding-bottom:150px}
+  .reader{height:calc(100dvh - 70px - 150px)}
+  .dock-hint{bottom:140px}
+}
+@media (max-width:560px){
+  .stage{padding-bottom:204px}
+  .reader{height:calc(100dvh - 64px - 204px)}
+  .dock-hint{bottom:196px}
+  .pair select{max-width:118px}
+  .dock .seg button span{display:none}
+  .empty h2{font-size:44px}
+  .entry{grid-template-columns:1fr}
+}
+
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
 }
@@ -330,68 +422,13 @@ body.explore .explore-bar{opacity:1;transform:translate(-50%,0);pointer-events:a
   </header>
 
   <main class="stage">
-    <section class="console glass" aria-label="Listening controls">
-      <div class="go-wrap">
-        <button class="go glass" id="goBtn" data-state="idle" aria-label="Start listening">
-          <span class="ring"></span>
-          <span class="disc">
-            <svg class="ico mic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0013 0M12 17.5V21"/></svg>
-            <svg class="ico stop" viewBox="0 0 24 24" fill="currentColor"><rect x="7" y="7" width="10" height="10" rx="2.5"/></svg>
-          </span>
-        </button>
-        <div class="go-text"><b id="goTitle">Start listening</b><span id="goSub">Or press the space bar</span></div>
-      </div>
-
-      <div class="field">
-        <span class="lbl" id="srcLbl">Listen to</span>
-        <div class="seg glass" id="srcSeg" role="group" aria-labelledby="srcLbl" data-v="0">
-          <span class="thumb"></span>
-          <button type="button" data-v="mic" aria-pressed="true">Microphone</button>
-          <button type="button" data-v="tab" aria-pressed="false">A tab or screen</button>
-        </div>
-      </div>
-      <div class="field" id="devField">
-        <label for="devSel">Input</label>
-        <select id="devSel"><option value="">Default microphone</option></select>
-      </div>
-      <p class="hint" id="tabHint" hidden>Choose the tab with Discord open (or your whole screen on Windows) and turn on <b>Share audio</b>. Works in Chrome and Edge.</p>
-
-      <div class="row2">
-        <div class="field"><label for="fromSel">They speak</label><select id="fromSel"></select></div>
-        <div class="field"><label for="toSel">You read</label><select id="toSel"></select></div>
-      </div>
-      <p class="hint" id="autoHint" hidden>Listens two ways at once, so it catches Tagalog and Taglish as well as English, French, Spanish and seven more.</p>
-
-      <div class="toggles">
-        <label class="tg"><span>Tell speakers apart<small>Names each voice in the transcript</small></span><span class="sw"><input type="checkbox" id="optSpk"><i></i></span></label>
-        <label class="tg"><span>Live guesses<small>Translates while people are still talking</small></span><span class="sw"><input type="checkbox" id="optLive"><i></i></span></label>
-        <label class="tg"><span>Read it aloud<small>Your browser speaks each translation</small></span><span class="sw"><input type="checkbox" id="optSpeak"><i></i></span></label>
-      </div>
-      <div class="voice" id="voiceRow" hidden>
-        <select id="voiceSel" aria-label="Voice"></select>
-        <input type="range" id="rateIn" min="0.8" max="1.6" step="0.05" aria-label="Speaking speed" title="Speaking speed">
-      </div>
-    </section>
-
-    <section class="paper glass" aria-label="Transcript">
-      <div class="paper-head">
-        <h1>Conversation <em id="pairLbl"></em></h1>
-        <div class="tools">
-          <button class="g" id="floatBtn" title="Keep the transcript on top of other windows (F)" aria-label="Float"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="5" width="18" height="14" rx="3"/><rect x="12" y="11" width="7" height="6" rx="1.5" fill="currentColor" stroke="none"/></svg><span>Float</span></button>
-          <button class="g" id="capsBtn" title="Big captions for sharing your screen (C)" aria-label="Captions"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M7 12.5h4M13 12.5h4M7 15.5h7"/></svg><span>Captions</span></button>
-          <button class="g" id="saveBtn" aria-haspopup="menu" title="Save the transcript" aria-label="Save"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 19.5h14"/></svg><span>Save</span></button>
-          <button class="g icon" id="clearBtn" aria-label="Clear the transcript" title="Clear"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12"/></svg></button>
-        </div>
-      </div>
+    <section class="reader" aria-label="Transcript">
+      <h1 class="sr">Conversation <em id="pairLbl"></em></h1>
       <div class="scroll" id="scroll">
         <div class="empty" id="empty">
           <h2>Hear it in theirs.<br><em>Read it in yours.</em></h2>
-          <ol>
-            <li><span><b>Connect Deepgram</b> once. New accounts come with free credit that lasts a long time.</span></li>
-            <li><span><b>Choose what to listen to:</b> your microphone, or the browser tab where Discord is open.</span></li>
-            <li><span><b>Press start.</b> Words appear as they are spoken, and the translation follows about a second later.</span></li>
-          </ol>
-          <p class="also">In a Discord call with friends? <button type="button" class="linkish" data-open="plans">Add VocaLink to your server</button> and everyone in the voice channel hears the others in their own language.</p>
+          <p class="lead">Press the orange button and talk, or share the tab your call is in. Words appear as they are spoken, and the translation follows about a second later.</p>
+          <p class="also">In a Discord call? <button type="button" class="linkish" data-open="plans">Add VocaLink to your server</button> and everyone hears the others in their own language.</p>
         </div>
         <ol class="feed" id="feed" aria-live="polite"></ol>
       </div>
@@ -401,6 +438,40 @@ body.explore .explore-bar{opacity:1;transform:translate(-50%,0);pointer-events:a
       </div>
     </section>
   </main>
+
+  <p class="dock-hint glass" id="tabHint" hidden>Choose the tab your call is in (or your whole screen on Windows) and turn on <b>Share audio</b>. Works in Chrome and Edge.</p>
+  <section class="dock glass" aria-label="Listening controls">
+    <button class="go" id="goBtn" data-state="idle" aria-label="Start listening">
+      <span class="ring"></span>
+      <svg class="ico mic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0013 0M12 17.5V21"/></svg>
+      <svg class="ico stop" viewBox="0 0 24 24" fill="currentColor"><rect x="7" y="7" width="10" height="10" rx="2.5"/></svg>
+    </button>
+    <div class="go-text"><b id="goTitle">Start listening</b><span id="goSub">Or press the space bar</span></div>
+    <span class="sep" aria-hidden="true"></span>
+    <div class="seg" id="srcSeg" role="group" aria-label="Listen to" data-v="0">
+      <span class="thumb"></span>
+      <button type="button" data-v="mic" aria-pressed="true" title="Your microphone"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0013 0M12 17.5V21"/></svg><span>Mic</span></button>
+      <button type="button" data-v="tab" aria-pressed="false" title="A browser tab or your screen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4.5" width="18" height="13" rx="2.5"/><path d="M8 20.5h8"/></svg><span>Tab</span></button>
+    </div>
+    <div class="pair" title="Auto-detect listens two ways at once, so it catches Tagalog and Taglish as well as English, French, Spanish and seven more.">
+      <select id="fromSel" aria-label="They speak"></select>
+      <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h13M13 7l5 5-5 5"/></svg>
+      <select id="toSel" aria-label="You read"></select>
+    </div>
+    <span class="sep" aria-hidden="true"></span>
+    <div class="opts">
+      <label class="tg opt" title="Tell speakers apart"><input type="checkbox" id="optSpk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="9" r="3.2"/><circle cx="16.5" cy="10" r="2.4"/><path d="M3.5 19c.6-3 2.8-4.6 5.5-4.6s4.9 1.6 5.5 4.6M14.6 15c2.6-.4 4.9.8 5.6 3.6"/></svg><span class="sr">Tell speakers apart</span></label>
+      <label class="tg opt" title="Live guesses: translate while people are still talking"><input type="checkbox" id="optLive"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15l4-6 4 4 4-7 4 5"/><circle cx="20" cy="11" r=".8" fill="currentColor"/></svg><span class="sr">Live guesses</span></label>
+      <label class="tg opt" title="Read translations aloud"><input type="checkbox" id="optSpeak"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9.5h3l4.5-4v13L7 14.5H4z"/><path d="M15.5 9a4 4 0 010 6M18 6.5a7.5 7.5 0 010 11"/></svg><span class="sr">Read it aloud</span></label>
+    </div>
+    <span class="sep" aria-hidden="true"></span>
+    <div class="tools">
+      <button class="g icon" id="capsBtn" title="Big captions for sharing your screen (C)" aria-label="Captions"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M7 12.5h4M13 12.5h4M7 15.5h7"/></svg></button>
+      <button class="g icon" id="floatBtn" title="Keep the transcript on top of other windows (F)" aria-label="Float"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="5" width="18" height="14" rx="3"/><rect x="12" y="11" width="7" height="6" rx="1.5" fill="currentColor" stroke="none"/></svg></button>
+      <button class="g icon" id="saveBtn" aria-haspopup="menu" title="Save the transcript" aria-label="Save"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 19.5h14"/></svg></button>
+      <button class="g icon" id="clearBtn" aria-label="Clear the transcript" title="Clear"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12"/></svg></button>
+    </div>
+  </section>
 </div>
 
 <div class="menu glass" id="saveMenu" role="menu" hidden>
@@ -443,6 +514,8 @@ body.explore .explore-bar{opacity:1;transform:translate(-50%,0);pointer-events:a
       </div>
       <p class="note" id="sttNote"></p>
     </div>
+    <div class="field" id="devField"><label for="devSel">Microphone</label><select id="devSel"><option value="">Default microphone</option></select></div>
+    <p class="note" id="autoHint" hidden>Auto-detect listens two ways at once, so it catches Tagalog and Taglish as well as English, French, Spanish and seven more.</p>
     <div class="field" id="sttKeyField"><span class="lbl" id="sttKeyLbl">Deepgram key</span><button type="button" class="g" id="changeKey" style="align-self:flex-start">Change key</button></div>
     <div class="field" id="trField">
       <span class="lbl" id="engLbl">Translation</span>
@@ -463,6 +536,7 @@ body.explore .explore-bar{opacity:1;transform:translate(-50%,0);pointer-events:a
       </div>
       <p class="note" id="vEngNote"></p>
     </div>
+    <div class="field" id="voiceRow" hidden><span class="lbl">Voice</span><div class="voice"><select id="voiceSel" aria-label="Voice"></select><input type="range" id="rateIn" min="0.8" max="1.6" step="0.05" aria-label="Speaking speed" title="Speaking speed"></div></div>
     <div class="field" id="elevenField" hidden><label for="elevenIn">ElevenLabs API key</label><input class="inp" id="elevenIn" type="password" autocomplete="off" spellcheck="false" placeholder="Paste your key"></div>
     <label class="tg"><span>Lift quiet voices<small>Raises soft speakers before they are transcribed</small></span><span class="sw"><input type="checkbox" id="optBoost"><i></i></span></label>
     <div class="acts"><button type="button" class="g" id="forget">Forget my keys</button><button class="g solid" value="ok">Done</button></div>
@@ -846,7 +920,7 @@ body.explore .explore-bar{opacity:1;transform:translate(-50%,0);pointer-events:a
       w.position.x=u.hx+Math.sin(T*.13+u.ph)*.4;w.position.z=u.hz+Math.cos(T*.11+u.ph)*.4;
       if(!u.self&&Math.hypot(w.position.x-fish.pos.x,w.position.z-fish.pos.z)<1.3){if(T>u.until)addRipple(w.position.x,w.position.z,.5);u.until=T+3.5;}
       var on=T<u.until?1:0;u.mix+=(on-u.mix)*Math.min(1,dt*4);
-      u.m1.opacity=(1-u.mix)*(.8+focusS*.2);u.m2.opacity=u.mix;
+      var wv=window.__pondWords==null?1:window.__pondWords;u.m1.opacity=(1-u.mix)*(.8+focusS*.2)*wv;u.m2.opacity=u.mix*wv;
     });
 
     // camera
@@ -902,6 +976,8 @@ const TO = [
 const LANG_NAME = Object.fromEntries([...TO, ...FROM.filter(f => f[0] !== 'multi')].map(([c, n]) => [c.split('-')[0], n]));
 LANG_NAME.tl = 'Tagalog'; LANG_NAME.fil = 'Tagalog'; LANG_NAME.zh = 'Chinese';
 const langName = (c) => LANG_NAME[(c || '').split('-')[0]] || c;
+const FLAG = { auto: '🌐', multi: '🌍', en: '🇺🇸', tl: '🇵🇭', fil: '🇵🇭', ceb: '🇵🇭', ilo: '🇵🇭', es: '🇪🇸', fr: '🇫🇷', de: '🇩🇪', it: '🇮🇹', pt: '🇧🇷', nl: '🇳🇱', ja: '🇯🇵', ko: '🇰🇷', zh: '🇨🇳', hi: '🇮🇳', ar: '🇸🇦', ru: '🇷🇺', id: '🇮🇩', ms: '🇲🇾', vi: '🇻🇳', th: '🇹🇭', tr: '🇹🇷', uk: '🇺🇦', pl: '🇵🇱', yo: '🇳🇬', ha: '🇳🇬', ig: '🇳🇬', sw: '🇰🇪' };
+const flagOf = (c) => FLAG[c] || FLAG[(c || '').split('-')[0]] || '';
 
 /* ---------- state ---------- */
 const S = {
@@ -934,7 +1010,7 @@ document.addEventListener('pointermove', (e) => {
 }, { passive: true });
 
 /* ---------- controls ---------- */
-const fill = (sel, list, v) => { sel.innerHTML = ''; for (const [c, n] of list) sel.add(new Option(n, c)); sel.value = v; };
+const fill = (sel, list, v) => { sel.innerHTML = ''; for (const [c, n] of list) sel.add(new Option(`${flagOf(c)}  ${n}`.trim(), c)); sel.value = v; };
 fill($('#fromSel'), FROM, S.from); fill($('#toSel'), TO, S.to);
 if (!$('#fromSel').value) { S.from = 'auto'; $('#fromSel').value = 'auto'; }
 if (!$('#toSel').value) { S.to = 'en'; $('#toSel').value = 'en'; }
@@ -1117,7 +1193,7 @@ const spkName = (s) => names[s] || `Speaker ${s + 1}`;
 const nearBottom = () => EL.scroll.scrollHeight - EL.scroll.scrollTop - EL.scroll.clientHeight < 140;
 const scrollDown = () => { EL.scroll.scrollTop = EL.scroll.scrollHeight; };
 
-function addEntry(spk, text, start, end, quiet = false, given = null) {
+function addEntry(spk, text, start, end, quiet = false, given = null, heard = null) {
   EL.empty.hidden = true;
   const stick = nearBottom();
   const e = { spk, text, tr: null, lang: null, at: new Date(), start, end };
@@ -1143,7 +1219,8 @@ function addEntry(spk, text, start, end, quiet = false, given = null) {
     const same = !!r.lang && r.lang.split('-')[0] === S.to.split('-')[0] && r.text.toLowerCase() === text.toLowerCase();
     trEl.className = 'tr reveal' + (same ? ' same' : '');
     trEl.textContent = e.tr;
-    if (r.lang) lang.textContent = langName(r.lang).toUpperCase();
+    const code = heard || r.lang;
+    if (code) lang.textContent = `${flagOf(code)} ${langName(code)}`.trim().toUpperCase();
     if (!who.textContent) who.remove();
     caps(e, false);
     dispatchEvent(new Event('vl:ripple'));
@@ -1233,7 +1310,8 @@ $('#saveBtn').onclick = (ev) => {
   const r = $('#saveBtn').getBoundingClientRect();
   menu.hidden = false;
   const w = menu.offsetWidth;
-  menu.style.top = (r.bottom + 8) + 'px';
+  const h = menu.offsetHeight;
+  menu.style.top = (r.bottom + 8 + h > innerHeight - 8 ? Math.max(8, r.top - h - 10) : r.bottom + 8) + 'px';
   menu.style.left = Math.max(12, Math.min(innerWidth - w - 12, r.right - w)) + 'px';
   menu.querySelector('button').focus();
 };
@@ -1505,7 +1583,7 @@ function sonioxEmit(l) {
   const spk = S.diarize && x.spk ? Math.max(0, parseInt(x.spk, 10) - 1 || 0) : null;
   const now = sessionT0 ? (performance.now() - sessionT0) / 1000 : 0;
   const d = Math.max(0.6, (x.end || 0) - (x.start || 0));
-  addEntry(spk, text, Math.max(0, now - d), now, x.n > 0 && x.conf / x.n < 0.5, { text: x.tr.trim() || text, lang: lang ? lang[0] : null });
+  addEntry(spk, text, Math.max(0, now - d), now, x.n > 0 && x.conf / x.n < 0.5, { text: x.tr.trim() || text, lang: lang ? lang[0] : null }, lang ? lang[0] : null);
   showLive('', '');
 }
 
@@ -1643,29 +1721,52 @@ function decide() {
   const key = speakerKey(dominant(tlWin.length ? tlWin : cand.flatMap(l => l.words)));
   const score = (l) => avgConf(l.words) + (l === lastWinner ? 0.03 : 0);
   const best = cand.reduce((a, b) => (score(b) > score(a) ? b : a));
-  let win = best;
+  // The multilingual model tags each word with its language. If it confidently hears French
+  // (or Spanish, German...), the sentence is that language, whatever the Tagalog model made
+  // of it: that model reports high confidence even on nonsense. The Tagalog model wins only
+  // when it is clearly better.
+  const mL = cand.find(l => l.language === 'multi'), tL = cand.find(l => l.language === 'tl');
+  const vote = (() => {
+    if (mL && mL.words.length >= 2) {
+      const n = new Map();
+      for (const w of mL.words) if (w.lang) { const k = w.lang.split('-')[0]; n.set(k, (n.get(k) || 0) + 1); }
+      const top = [...n].sort((a, b) => b[1] - a[1])[0];
+      const share = top ? top[1] / mL.words.length : 0, mc = avgConf(mL.words);
+      if (top && top[0] !== 'en' && share >= 0.7 && mc >= 0.65) return { lane: mL, lang: top[0] };
+      if (tL && avgConf(tL.words) - mc >= 0.12) return { lane: tL, lang: 'tl' };
+      if (top && top[0] === 'en' && share >= 0.8 && mc >= 0.85 && (!tL || mc >= avgConf(tL.words))) return { lane: mL, lang: 'en' };
+      if (!tL) return { lane: mL, lang: top ? top[0] : null };
+      return null;
+    }
+    if (tL && tL.words.length >= 2) return { lane: tL, lang: 'tl' };
+    return null;
+  })();
+  let win = vote ? vote.lane : best;
 
   const lock = locks.get(key);
   if (lock) {
     const locked = cand.find(l => l.language === lock.lane);
     if (locked) { win = locked; lock.strikes = 0; }
-    else if (avgConf(best.words) >= 0.85 && best.words.length >= 5 && ++lock.strikes >= 3) {
+    else if (vote && vote.lane.words.length >= 5 && ++lock.strikes >= 3) {
       // they have clearly switched language: listen again from scratch
       locks.delete(key); evidence.delete(key);
       toast(`${speakerLabel(key)} switched language. Detecting again.`);
     }
   } else {
     let ev = evidence.get(key);
-    if (!ev) evidence.set(key, (ev = { tl: 0, multi: 0, words: 0 }));
-    const other = cand.find(l => l !== best);
-    const margin = avgConf(best.words) - (other ? avgConf(other.words) : 0);
-    if (best.words.length >= 3 && margin >= 0.06) { ev[best.language]++; ev.words += best.words.length; }
+    if (!ev) evidence.set(key, (ev = { tl: 0, multi: 0, words: 0, langs: new Map() }));
+    if (vote && vote.lane.words.length >= 2) {
+      ev[vote.lane.language]++; ev.words += vote.lane.words.length;
+      if (vote.lang) ev.langs.set(vote.lang, (ev.langs.get(vote.lang) || 0) + 1);
+    }
     const lead = Math.max(ev.tl, ev.multi), total = ev.tl + ev.multi;
-    if (lead >= 4 && lead / total >= 0.75 && ev.words >= 20) {
+    if (lead >= 3 && lead / total >= 0.75 && ev.words >= 12) {
       const lane = ev.tl >= ev.multi ? 'tl' : 'multi';
       const lw = cand.find(l => l.language === lane);
-      const name = laneName(lane, lw ? lw.words : []);
-      locks.set(key, { lane, name, code: lane === 'tl' ? 'tl' : topLang(lw ? lw.words : []), strikes: 0 });
+      const topEv = [...ev.langs].filter(([k]) => k !== 'tl').sort((a, b) => b[1] - a[1])[0];
+      const code = lane === 'tl' ? 'tl' : (topEv ? topEv[0] : topLang(lw ? lw.words : []));
+      const name = lane === 'tl' ? 'Tagalog and Taglish' : code ? langName(code) : 'their language';
+      locks.set(key, { lane, name, code, strikes: 0 });
       toast(`Locked onto ${name} for ${speakerLabel(key)}.`);
       win = lw || best;
       setTimeout(narrow, 0); // after this sentence is written
@@ -1694,7 +1795,8 @@ function emitWords(lane, words, multiLane) {
     if (!g.text.trim()) continue;
     const gw = words.filter(w => w.s >= g.start - 0.001 && w.e <= g.end + 0.001);
     const d = Math.max(0.6, (g.end || 0) - (g.start || 0));
-    addEntry(g.spk, g.text.trim(), Math.max(0, now - d), now, avgConf(gw) < 0.5); // unsure lines are shown, not read aloud
+    const heard = lane.language === 'tl' ? 'tl' : lane.language === 'multi' ? topLang(gw) : lane.language;
+    addEntry(g.spk, g.text.trim(), Math.max(0, now - d), now, avgConf(gw) < 0.5, null, heard); // unsure lines are shown, not read aloud
   }
   render();
 }
@@ -1920,6 +2022,7 @@ addEventListener('hashchange', fromHash);
 let yaw = 0, zoom = 1, dragX = null;
 function explore(on) {
   document.body.classList.toggle('explore', on);
+  window.__pondWords = on ? 1 : 0.35;
   $('.app').inert = on;
   if (on) $('#pondBack').focus(); else $('#pondBtn').focus();
 }
@@ -1935,6 +2038,7 @@ addEventListener('wheel', (e) => {
   window.__pondZoom = zoom;
 }, { passive: true });
 
+window.__pondWords = 0.35;
 /* first visit */
 fromHash();
 if (!S.key && !plansDlg.open) setTimeout(() => { if (!S.key && !$('#keyDlg').open && !plansDlg.open) openKey('deepgram'); }, 1100);
