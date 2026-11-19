@@ -957,8 +957,10 @@ function loadVoices() {
   if (!('speechSynthesis' in window)) return;
   const base = S.to.split('-')[0];
   const want = base === 'tl' ? ['fil', 'tl'] : base === 'zh' ? ['zh'] : [base];
-  voices = speechSynthesis.getVoices().filter(v => want.some(w => v.lang.toLowerCase().replace('_', '-').startsWith(w)));
-  const score = (v) => (/natural|neural|online|premium|enhanced/i.test(v.name) ? 2 : 0) + (/google/i.test(v.name) ? 1 : 0);
+  // Apple's novelty voices sound like machines; never offer them
+  const NOVELTY = /^(Albert|Bad News|Bahh|Bells|Boing|Bubbles|Cellos|Deranged|Good News|Hysterical|Jester|Junior|Organ|Pipe Organ|Ralph|Superstar|Trinoids|Whisper|Wobble|Zarvox|Fred|Kathy|Grandma|Grandpa|Rocko|Sandy|Shelley|Flo|Eddy|Reed)\b/i;
+  voices = speechSynthesis.getVoices().filter(v => want.some(w => v.lang.toLowerCase().replace('_', '-').startsWith(w)) && !NOVELTY.test(v.name));
+  const score = (v) => (/natural|neural|online|premium|enhanced|siri/i.test(v.name) ? 4 : 0) + (/google/i.test(v.name) ? 3 : 0) + (/samantha|daniel|karen|moira|tessa|serena|ava|allison|susan|zoe|evan|nathan/i.test(v.name) ? 2 : 0) + (v.localService ? 0 : 1);
   voices.sort((a, b) => score(b) - score(a));
   const sel = $('#voiceSel'); sel.innerHTML = '';
   if (!voices.length) { sel.add(new Option(`No ${langName(base)} voice in this browser`, '')); sel.disabled = true; return; }
@@ -1032,7 +1034,7 @@ const spkName = (s) => names[s] || `Speaker ${s + 1}`;
 const nearBottom = () => EL.scroll.scrollHeight - EL.scroll.scrollTop - EL.scroll.clientHeight < 140;
 const scrollDown = () => { EL.scroll.scrollTop = EL.scroll.scrollHeight; };
 
-function addEntry(spk, text, start, end) {
+function addEntry(spk, text, start, end, quiet = false) {
   EL.empty.hidden = true;
   const stick = nearBottom();
   const e = { spk, text, tr: null, lang: null, at: new Date(), start, end };
@@ -1062,7 +1064,7 @@ function addEntry(spk, text, start, end) {
     if (!who.textContent) who.remove();
     caps(e, false);
     dispatchEvent(new Event('vl:ripple'));
-    if (S.speak && !same) speakNow(e.tr);
+    if (S.speak && !same && !quiet) speakNow(e.tr);
     if (stick || nearBottom()) scrollDown();
   }).catch((err) => {
     trEl.className = 'tr err';
@@ -1348,7 +1350,7 @@ function onMsg(l, data) {
       const s0 = w.start != null ? +w.start + l.offset : st, e0 = w.end != null ? +w.end + l.offset : st + du;
       if (lanes.length > 1 && e0 <= lastCut + 0.05) continue; // these words were already taken from the other lane
       const c = typeof w.confidence === 'number' ? w.confidence : (typeof alt.confidence === 'number' ? alt.confidence : 0.5);
-      l.words.push({ w: word, spk: S.diarize && typeof w.speaker === 'number' ? w.speaker : null, s: s0, e: e0, c });
+      l.words.push({ w: word, spk: S.diarize && typeof w.speaker === 'number' ? w.speaker : null, s: s0, e: e0, c, lang: w.language || null });
       cs += c; cn++;
     }
     if (cn) l.ema = l.ema * 0.6 + (cs / cn) * 0.4;
@@ -1377,19 +1379,94 @@ function trigger(l, final) {
   render();
 }
 
-/** Turn the best lane's words into transcript lines, and drop the same words from the others. */
+// Auto-detect is patient: while unsure about a speaker it compares both models sentence by
+// sentence, and once one has clearly won for that person it locks them to it. Speaker ids come
+// from the Tagalog lane, so the same person keeps the same label whichever model wins.
+const locks = new Map();     // speaker key -> { lane, name, strikes }
+const evidence = new Map();  // speaker key -> { tl, multi, words, langs }
+const avgConf = (ws) => (ws.length ? ws.reduce((a, w) => a + w.c, 0) / ws.length : 0);
+function dominant(ws) {
+  const n = new Map();
+  for (const w of ws) if (w.spk !== null) n.set(w.spk, (n.get(w.spk) || 0) + 1);
+  let best = null, max = 0;
+  for (const [k, v] of n) if (v > max) { best = k; max = v; }
+  return best;
+}
+const speakerKey = (spk) => (S.diarize && spk !== null ? 's' + spk : 'all');
+const speakerLabel = (key) => (key === 'all' ? 'this conversation' : spkName(+key.slice(1)));
+const laneName = (lane, ws) => {
+  if (lane === 'tl') return 'Tagalog and Taglish';
+  const n = new Map();
+  for (const w of ws) if (w.lang) n.set(w.lang, (n.get(w.lang) || 0) + 1);
+  const top = [...n].sort((a, b) => b[1] - a[1])[0];
+  return top ? langName(top[0]) : 'their language';
+};
+
+/** Turn the right lane's words into transcript lines, and drop the same words from the others. */
 function decide() {
   clearTimeout(decideTimer);
   const cand = lanes.filter(l => !l.dead && l.words.length);
   if (!cand.length) { render(); return; }
-  const score = (l) => l.words.reduce((a, w) => a + w.c, 0) / l.words.length + (l === lastWinner ? 0.03 : 0);
-  const win = cand.reduce((a, b) => (score(b) > score(a) ? b : a));
+  if (!isAuto()) { emitWords(cand[0], cand[0].words, false); return; }
+
+  const lo = Math.min(...cand.flatMap(l => l.words.map(w => w.s))), hi = Math.max(...cand.flatMap(l => l.words.map(w => w.e)));
+  const tlLane = lanes.find(l => l.language === 'tl' && !l.dead);
+  const tlWin = tlLane ? tlLane.words.filter(w => w.e > lo - 0.05 && w.s < hi + 0.05) : [];
+  const key = speakerKey(dominant(tlWin.length ? tlWin : cand.flatMap(l => l.words)));
+  const score = (l) => avgConf(l.words) + (l === lastWinner ? 0.03 : 0);
+  const best = cand.reduce((a, b) => (score(b) > score(a) ? b : a));
+  let win = best;
+
+  const lock = locks.get(key);
+  if (lock) {
+    const locked = cand.find(l => l.language === lock.lane);
+    if (locked) { win = locked; lock.strikes = 0; }
+    else if (avgConf(best.words) >= 0.85 && best.words.length >= 5 && ++lock.strikes >= 3) {
+      // they have clearly switched language: listen again from scratch
+      locks.delete(key); evidence.delete(key);
+      toast(`${speakerLabel(key)} switched language. Detecting again.`);
+    }
+  } else {
+    let ev = evidence.get(key);
+    if (!ev) evidence.set(key, (ev = { tl: 0, multi: 0, words: 0 }));
+    const other = cand.find(l => l !== best);
+    const margin = avgConf(best.words) - (other ? avgConf(other.words) : 0);
+    if (best.words.length >= 3 && margin >= 0.06) { ev[best.language]++; ev.words += best.words.length; }
+    const lead = Math.max(ev.tl, ev.multi), total = ev.tl + ev.multi;
+    if (lead >= 4 && lead / total >= 0.75 && ev.words >= 20) {
+      const lane = ev.tl >= ev.multi ? 'tl' : 'multi';
+      const lw = cand.find(l => l.language === lane);
+      const name = laneName(lane, lw ? lw.words : []);
+      locks.set(key, { lane, name, strikes: 0 });
+      toast(`Locked onto ${name} for ${speakerLabel(key)}.`);
+      win = lw || best;
+    }
+  }
+
+  // keep speaker labels stable: label the winner's words with the Tagalog lane's speaker ids
+  if (win !== tlLane && tlWin.length && S.diarize) {
+    for (const w of win.words) {
+      let bestOv = 0, id = w.spk;
+      for (const t of tlWin) { const ov = Math.min(w.e, t.e) - Math.max(w.s, t.s); if (ov > bestOv) { bestOv = ov; id = t.spk; } }
+      w.spk = id;
+    }
+  }
   lastWinner = win;
-  const words = win.words;
-  lastCut = Math.max(lastCut, ...words.map(w => w.e));
-  for (const l of lanes) l.words = l.words.filter(w => w.e > lastCut + 0.05);
+  emitWords(win, win.words, true);
+}
+
+function emitWords(lane, words, multiLane) {
+  if (multiLane) {
+    lastCut = Math.max(lastCut, ...words.map(w => w.e));
+    for (const l of lanes) l.words = l.words.filter(w => w.e > lastCut + 0.05);
+  } else lane.words = [];
   const now = sessionT0 ? (performance.now() - sessionT0) / 1000 : 0;
-  for (const g of groupWords(words)) if (g.text.trim()) { const d = Math.max(0.6, (g.end || 0) - (g.start || 0)); addEntry(g.spk, g.text.trim(), Math.max(0, now - d), now); }
+  for (const g of groupWords(words)) {
+    if (!g.text.trim()) continue;
+    const gw = words.filter(w => w.s >= g.start - 0.001 && w.e <= g.end + 0.001);
+    const d = Math.max(0.6, (g.end || 0) - (g.start || 0));
+    addEntry(g.spk, g.text.trim(), Math.max(0, now - d), now, avgConf(gw) < 0.5); // unsure lines are shown, not read aloud
+  }
   render();
 }
 const flush = decide;
@@ -1409,7 +1486,7 @@ async function start() {
   starting = true;
   if (!sessionT0) sessionT0 = performance.now();
   running = true; gen++;
-  lanes = laneLanguages().map(newLane); lastCut = -1; lastWinner = null; clock = 0;
+  lanes = laneLanguages().map(newLane); lastCut = -1; lastWinner = null; clock = 0; locks.clear(); evidence.clear();
   setGo('connecting', 'Connecting', S.src === 'tab' ? 'Choose a tab and share its audio' : 'Allow the microphone if asked'); spin();
   try {
     stream = await getStream();
