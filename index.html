@@ -214,10 +214,17 @@ dialog[open]{animation:pop .5s var(--spring)}
 .also{margin:26px 0 0;color:var(--mute);font-size:14px;max-width:470px;line-height:1.55}
 .linkish{border:0;background:none;padding:0;color:var(--acc);font:inherit;font-weight:600;cursor:pointer;text-decoration:underline;text-decoration-color:rgba(255,138,61,.4);text-underline-offset:3px}
 .linkish:hover{text-decoration-color:var(--acc)}
-dialog.wide{max-width:min(880px,calc(100vw - 28px))}
+dialog.wide{max-width:min(640px,calc(100vw - 28px))}
 .sheet .x{position:absolute;top:16px;right:16px}
 .sheet h2 em{color:var(--acc)}
 .sheet .lede{max-width:62ch;font-size:15px;color:var(--mute)}
+.sheet .steps{margin:4px 0 0;padding:0;list-style:none;counter-reset:s;display:flex;flex-direction:column;gap:12px;border-top:1px solid var(--line);padding-top:18px}
+.sheet .steps li{counter-increment:s;display:grid;grid-template-columns:30px 1fr;color:var(--mute);font-size:14.5px;line-height:1.55}
+.sheet .steps li::before{content:counter(s,decimal-leading-zero);font:500 11px/2.1 var(--mono);color:var(--glow)}
+.sheet .steps b{color:var(--fg);font-weight:600}
+.sheet .steps code{font-family:var(--mono);font-size:12.5px;color:var(--fg);background:rgba(2,10,14,.55);padding:1px 6px;border-radius:6px}
+.acts.start{justify-content:flex-start}
+.acts a.g{text-decoration:none}
 .plans{display:grid;grid-template-columns:repeat(3,1fr);margin:6px 0 2px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
 .plan{display:flex;flex-direction:column;gap:10px;padding:20px 20px 22px}
 .plan+.plan{border-left:1px solid var(--line)}
@@ -300,8 +307,8 @@ dialog.wide{max-width:min(880px,calc(100vw - 28px))}
     <a class="mark" href="/" aria-label="VocaLink home"><svg class="logo" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="16" fill="#071a20"/><rect x=".75" y=".75" width="62.5" height="62.5" rx="15.25" fill="none" stroke="#7ff0dc" stroke-opacity=".18" stroke-width="1.5"/><path d="M13 33h7l4.5-12 7 24 6.5-18 4 10 3.5-4H51" fill="none" stroke="#ff8a3d" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg><b>VocaLink</b></a>
     <div class="bar-r">
       <button class="g" id="botBtn" aria-haspopup="dialog" title="Add VocaLink to your Discord server"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="9" cy="9" r="3.2"/><circle cx="16.5" cy="10" r="2.4"/><path d="M3.5 19c.6-3 2.8-4.6 5.5-4.6s4.9 1.6 5.5 4.6M14.6 15c2.6-.4 4.9.8 5.6 3.6"/></svg><span>For Discord</span></button>
-      <div class="meter glass mono" id="meter" title="Listening time this session and the estimated Deepgram cost">
-        <span class="dot"></span><span id="mTime">0:00</span><span class="cost" id="mCost">$0.00</span>
+      <div class="meter glass mono" id="meter" title="Listening time this session">
+        <span class="dot"></span><span id="mTime">0:00</span>
       </div>
       <button class="g icon" id="setBtn" aria-label="Settings" title="Settings">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2.2"/><circle cx="8" cy="17" r="2.2"/></svg>
@@ -340,7 +347,7 @@ dialog.wide{max-width:min(880px,calc(100vw - 28px))}
         <div class="field"><label for="fromSel">They speak</label><select id="fromSel"></select></div>
         <div class="field"><label for="toSel">You read</label><select id="toSel"></select></div>
       </div>
-      <p class="hint" id="autoHint" hidden>Listens two ways at once so it catches Tagalog and Taglish as well as English, French, Spanish and seven more. Choosing one language halves the Deepgram cost.</p>
+      <p class="hint" id="autoHint" hidden>Listens two ways at once, so it catches Tagalog and Taglish as well as English, French, Spanish and seven more.</p>
 
       <div class="toggles">
         <label class="tg"><span>Tell speakers apart<small>Names each voice in the transcript</small></span><span class="sw"><input type="checkbox" id="optSpk"><i></i></span></label>
@@ -367,7 +374,7 @@ dialog.wide{max-width:min(880px,calc(100vw - 28px))}
         <div class="empty" id="empty">
           <h2>Hear it in theirs.<br><em>Read it in yours.</em></h2>
           <ol>
-            <li><span><b>Connect Deepgram</b> once. New accounts come with $200 of free credit.</span></li>
+            <li><span><b>Connect Deepgram</b> once. New accounts come with free credit that lasts a long time.</span></li>
             <li><span><b>Choose what to listen to:</b> your microphone, or the browser tab where Discord is open.</span></li>
             <li><span><b>Press start.</b> Words appear as they are spoken, and the translation follows about a second later.</span></li>
           </ol>
@@ -399,7 +406,7 @@ dialog.wide{max-width:min(880px,calc(100vw - 28px))}
 <dialog id="keyDlg" aria-labelledby="keyTitle">
   <form method="dialog" class="sheet glass" id="keyForm">
     <h2 id="keyTitle">Connect Deepgram</h2>
-    <p>VocaLink hears speech through Deepgram. Setting it up takes about a minute, and the free credit covers hundreds of hours.</p>
+    <p>VocaLink hears speech through Deepgram. Setting it up takes about a minute, and new accounts come with free credit that covers hundreds of hours.</p>
     <ol>
       <li>Sign up at <a href="https://console.deepgram.com/signup" target="_blank" rel="noopener">console.deepgram.com</a>.</li>
       <li>Open <b>API Keys</b> and create a key with the default settings.</li>
@@ -426,7 +433,6 @@ dialog.wide{max-width:min(880px,calc(100vw - 28px))}
     <div class="field" id="claudeField" hidden><label for="claudeIn">Anthropic API key</label><input class="inp" id="claudeIn" type="password" autocomplete="off" spellcheck="false" placeholder="sk-ant-..."></div>
     <label class="tg"><span>Lift quiet voices<small>Raises soft speakers before Deepgram hears them</small></span><span class="sw"><input type="checkbox" id="optBoost"><i></i></span></label>
     <div class="field"><span class="lbl">Deepgram key</span><button type="button" class="g" id="changeKey" style="align-self:flex-start">Change key</button></div>
-    <p class="note">The cost shown at the top uses Deepgram's list price for live speech, about $0.46 an hour. Your Deepgram console has the exact figure.</p>
     <div class="acts"><button type="button" class="g" id="forget">Forget my keys</button><button class="g solid" value="ok">Done</button></div>
     <p class="note legal"><a href="/terms/">Terms</a> · <a href="/privacy/">Privacy</a></p>
   </form>
@@ -437,28 +443,13 @@ dialog.wide{max-width:min(880px,calc(100vw - 28px))}
     <button type="button" class="g icon x" id="plansClose" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     <h2 id="plansTitle">VocaLink for <em>Discord</em></h2>
     <p class="lede">Add the bot to your server and everyone in the voice channel hears the others in their own language, about a second behind. Captions go to a thread, and each person gets a private translator that never plays their own voice back.</p>
-    <div class="plans">
-      <section class="plan">
-        <h3>Free</h3>
-        <p class="price">$0</p>
-        <ul><li>3 hours of translation a month</li><li>Live captions, and a personal translator for everyone</li><li>Each person's device reads translations aloud</li></ul>
-        <a class="g" id="getFree" target="_blank" rel="noopener">Add to Discord</a>
-      </section>
-      <section class="plan">
-        <h3>Plus</h3>
-        <p class="price">$9.99<small> a month</small></p>
-        <ul><li>30 hours a month</li><li>Everything in Free</li><li>Enough for a group that talks most evenings</li></ul>
-        <a class="g" id="getPlus" target="_blank" rel="noopener">Get Plus</a>
-      </section>
-      <section class="plan pro">
-        <h3>Pro</h3>
-        <p class="price">$29.99<small> a month</small></p>
-        <ul><li>60 hours a month</li><li>Natural AI voices</li><li>Speak in your own voice, cloned only with your consent</li></ul>
-        <a class="g solid" id="getPro" target="_blank" rel="noopener">Get Pro</a>
-      </section>
-    </div>
-    <p class="note">Plans are per server, so one purchase covers everyone in it. Choose a plan, add VocaLink to your server, and Discord shows the purchase right there. Discord handles the payment, and you can cancel from Discord's settings at any time.</p>
-    <p class="note legal"><a href="/terms/">Terms</a> · <a href="/privacy/">Privacy</a> · <a href="/brand/">Brand</a> · This page itself stays free with your own Deepgram key.</p>
+    <ol class="steps">
+      <li><span><b>Add VocaLink</b> to your server with the button below.</span></li>
+      <li><span><b>Pick your languages.</b> An admin runs <code>/setup</code> and chooses up to three.</span></li>
+      <li><span><b>Start talking.</b> Join a voice channel and run <code>/translate start</code>. Everyone taps <b>Open my translator</b> and hears the others in their own language.</span></li>
+    </ol>
+    <div class="acts start"><a class="g solid" id="getFree" target="_blank" rel="noopener">Add to Discord</a></div>
+    <p class="note legal"><a href="/terms/">Terms</a> · <a href="/privacy/">Privacy</a> · <a href="/brand/">Brand</a></p>
   </div>
 </dialog>
 
@@ -1505,7 +1496,6 @@ $('#goBtn').onclick = () => (running ? stop() : start());
 setInterval(() => {
   const s = Math.round(audioSec);
   $('#mTime').textContent = `${Math.floor(s / 60)}:${pad(s % 60)}`;
-  $('#mCost').textContent = '$' + (streamSec / 3600 * 0.46).toFixed(2);
   $('#goBtn').style.setProperty('--lvl', running && anyOpen() ? Math.min(1, level * 1.2).toFixed(3) : 0);
 }, 100);
 
@@ -1524,7 +1514,7 @@ const setEng = seg($('#engSeg'), S.engine, (v) => { S.engine = v; save('engine')
 function engUI() {
   $('#claudeField').hidden = S.engine !== 'claude';
   $('#engNote').textContent = S.engine === 'claude'
-    ? 'More natural with slang and mixed languages. It uses your Anthropic key and costs a little per line.'
+    ? 'More natural with slang and mixed languages. It uses your own Anthropic key.'
     : 'Fast and free. Good for everyday talk.';
 }
 engUI();
@@ -1557,11 +1547,10 @@ document.addEventListener('keydown', (e) => {
 });
 
 /* ---------- VocaLink for Discord ---------- */
-// The bot's public app id, and the Discord shop SKUs once they exist (Developer Portal > Monetization).
-const VL = { appId: '1553182455962534030', sku: { plus: '', pro: '' } };
+// The bot's public app id.
+const VL = { appId: '1553182455962534030' };
 const invite = `https://discord.com/oauth2/authorize?client_id=${VL.appId}&permissions=309240876032&scope=bot%20applications.commands`;
-const shop = (sku) => sku ? `https://discord.com/application-directory/${VL.appId}/store/${sku}` : invite;
-$('#getFree').href = invite; $('#getPlus').href = shop(VL.sku.plus); $('#getPro').href = shop(VL.sku.pro);
+$('#getFree').href = invite;
 const plansDlg = $('#plansDlg');
 const openPlans = () => { if (!plansDlg.open) plansDlg.showModal(); if (location.hash !== '#discord') history.replaceState(null, '', '#discord'); };
 const closePlans = () => plansDlg.close();

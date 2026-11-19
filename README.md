@@ -7,11 +7,11 @@
 
 # VocaLink website
 
-The website for VocaLink, live voice translation for calls. The home page is a working translator that runs in the browser, set over a night-time Three.js koi pond. The same page is where people add the VocaLink bot to their Discord server and choose a plan.
+The website for VocaLink, live voice translation for calls. The home page is a working translator that runs in the browser, set over a night-time Three.js koi pond. The same page is where people add the VocaLink bot to their Discord server.
 
 Live site: [vocalinktest.vercel.app](https://vocalinktest.vercel.app)
 
-The Discord bot lives in [datArtist-io/VocaLink-discord-bot](https://github.com/datArtist-io/VocaLink-discord-bot); its [PRODUCT.md](https://github.com/datArtist-io/VocaLink-discord-bot/blob/main/discord-voice-translator/docs/PRODUCT.md) explains how the website, the bot and Discord's shop fit together.
+The Discord bot lives in [datArtist-io/VocaLink-discord-bot](https://github.com/datArtist-io/VocaLink-discord-bot).
 
 ## Pages
 
@@ -25,12 +25,12 @@ The Discord bot lives in [datArtist-io/VocaLink-discord-bot](https://github.com/
 
 ## The translator
 
-Nothing runs on a server, so the only cost is Deepgram's speech recognition, paid with each visitor's own key: about $0.92 an hour with auto-detect, or $0.46 with one language chosen. New Deepgram accounts get $200 of free credit.
+Nothing runs on a server, so the only cost is Deepgram's speech recognition, paid with each visitor's own key. New Deepgram accounts come with free credit.
 
 1. Audio comes from the microphone, or from a shared browser tab or screen. Sharing the tab where Discord is open lets it follow a call with no extra software.
 2. An audio worklet converts the audio to 16 kHz, lifts quiet voices, and streams it to Deepgram's live API. It uses `nova-3`, and falls back to `nova-2` for languages `nova-3` does not cover.
    - **Auto-detect (the default)** runs two models on the same audio: Deepgram's multilingual model (English, Spanish, French, German, Hindi, Russian, Portuguese, Japanese, Italian and Dutch) and its Tagalog model, which also handles Taglish. For each sentence it keeps the version heard more confidently. If one model is unavailable, the other carries on.
-   - **Choosing one language** uses a single model and costs half as much.
+   - **Choosing one language** uses a single model.
 3. Words appear while people are still talking. Each finished sentence is translated with Google Translate's free web endpoint, or with Claude if the visitor adds an Anthropic key in Settings.
 4. The browser can read each translation aloud with its own voices. While it speaks, the microphone input is muted, so it never translates itself.
 
@@ -40,10 +40,7 @@ Keys and settings are stored only in the visitor's browser.
 
 ## The Discord panel
 
-"For Discord" opens the three server plans (Free, Plus, Pro):
-
-- **Free** opens Discord's screen for adding the bot to a server.
-- **Plus and Pro** open each plan's page in Discord's app shop, once the SKU ids are filled in at the bottom of `index.html` (`VL.sku`). Until then they also add the bot, and the bot offers the upgrade inside Discord.
+"For Discord" explains the bot in three steps and links to Discord's screen for adding it to a server.
 
 ## The pond
 
