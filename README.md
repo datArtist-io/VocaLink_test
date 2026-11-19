@@ -34,7 +34,14 @@ Nothing runs on a server, so the only cost is Deepgram's speech recognition, pai
 3. Words appear while people are still talking. Each finished sentence is translated with Google Translate's free web endpoint, or with Claude if the visitor adds an Anthropic key in Settings.
 4. The browser can read each translation aloud with its own voices. While it speaks, the microphone input is muted, so it never translates itself.
 
-It also tells speakers apart (click a name to rename it), floats the transcript in an always-on-top window in Chrome and Edge, shows full-screen captions for screen sharing, and saves the conversation as text or `.srt` subtitles. Shortcuts: space starts and stops, C opens captions, F floats the transcript.
+Optional services, each with the visitor's own key (Settings):
+
+- **Soniox** instead of Deepgram: recognises Tagalog and Taglish natively, follows language switches mid-sentence, and translates in the same stream, so Google is not used.
+- **ElevenLabs** instead of the browser voice: natural voices for read-aloud, with seven to choose from. If the key or quota fails, the browser voice takes over.
+
+With Deepgram, auto-detect locks each speaker to their language after four clear sentences and then listens with that single language model; it goes back to detecting if the language clearly changes.
+
+It also tells speakers apart (click a name to rename it), floats the transcript in an always-on-top window in Chrome and Edge, shows full-screen captions for screen sharing, and saves the conversation as text or `.srt` subtitles. Shortcuts: space starts and stops, C opens captions, F floats the transcript, P explores the pond.
 
 Keys and settings are stored only in the visitor's browser.
 
@@ -43,6 +50,8 @@ Keys and settings are stored only in the visitor's browser.
 "For Discord" explains the bot in three steps and links to Discord's screen for adding it to a server.
 
 ## The pond
+
+The pond button in the header (or P) fades the app away so the pond can be explored: drag to look around and scroll to move closer. Translation keeps running underneath.
 
 The koi follows the pointer and swims faster when someone is speaking. Each new translation sends a ripple across the water, and clicks on open water make ripples too. The scene also has:
 

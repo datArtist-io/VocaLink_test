@@ -245,6 +245,18 @@ dialog.wide{max-width:min(640px,calc(100vw - 28px))}
 .toast.bad{box-shadow:inset 0 0 0 1px rgba(255,138,61,.55), var(--shadow)}
 .toast.out{opacity:0;transform:translateY(8px);transition:.3s var(--ease)}
 
+/* explore the pond */
+.app,.veil{transition:opacity .7s var(--ease),transform .7s var(--ease)}
+body.explore .app{opacity:0;transform:scale(.985);pointer-events:none}
+body.explore .veil{opacity:0}
+body.explore #pond{cursor:grab}
+body.explore.dragging #pond{cursor:grabbing}
+.explore-bar{position:fixed;left:50%;bottom:24px;z-index:20;display:flex;align-items:center;gap:16px;padding:10px 10px 10px 20px;border-radius:999px;font-size:13.5px;color:var(--mute);
+  transform:translate(-50%,24px);opacity:0;pointer-events:none;transition:opacity .5s var(--ease),transform .6s var(--spring);max-width:calc(100vw - 28px)}
+body.explore .explore-bar{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+.explore-bar .g{white-space:nowrap;flex:none}
+@media (max-width:560px){.explore-bar{flex-direction:column;gap:10px;padding:14px 16px;border-radius:20px;text-align:center}}
+
 /* captions mode */
 .caps{position:fixed;inset:0;z-index:50;display:flex;flex-direction:column;justify-content:flex-end;padding:6vh 7vw 10vh;background:linear-gradient(180deg,rgba(2,8,11,.55),rgba(2,8,11,.9) 70%);-webkit-backdrop-filter:blur(22px) saturate(140%);backdrop-filter:blur(22px) saturate(140%);animation:pop .5s var(--ease)}
 .caps .c-src{color:var(--mute);font-size:clamp(16px,2vw,22px);margin:0 0 12px;max-width:70ch;text-shadow:0 2px 14px #000}
@@ -306,6 +318,7 @@ dialog.wide{max-width:min(640px,calc(100vw - 28px))}
   <header class="bar">
     <a class="mark" href="/" aria-label="VocaLink home"><svg class="logo" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="16" fill="#071a20"/><rect x=".75" y=".75" width="62.5" height="62.5" rx="15.25" fill="none" stroke="#7ff0dc" stroke-opacity=".18" stroke-width="1.5"/><path d="M13 33h7l4.5-12 7 24 6.5-18 4 10 3.5-4H51" fill="none" stroke="#ff8a3d" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg><b>VocaLink</b></a>
     <div class="bar-r">
+      <button class="g icon" id="pondBtn" title="Explore the pond (P)" aria-label="Explore the pond"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12c2.2-3.4 5.3-5 8.6-5 3.8 0 6.6 2.4 8.9 5-2.3 2.6-5.1 5-8.9 5-3.3 0-6.4-1.6-8.6-5z"/><path d="M20.5 12l1.5-2.6M20.5 12l1.5 2.6"/><circle cx="8" cy="11" r=".9" fill="currentColor" stroke="none"/></svg></button>
       <button class="g" id="botBtn" aria-haspopup="dialog" title="Add VocaLink to your Discord server"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="9" cy="9" r="3.2"/><circle cx="16.5" cy="10" r="2.4"/><path d="M3.5 19c.6-3 2.8-4.6 5.5-4.6s4.9 1.6 5.5 4.6M14.6 15c2.6-.4 4.9.8 5.6 3.6"/></svg><span>For Discord</span></button>
       <div class="meter glass mono" id="meter" title="Listening time this session">
         <span class="dot"></span><span id="mTime">0:00</span>
@@ -406,14 +419,14 @@ dialog.wide{max-width:min(640px,calc(100vw - 28px))}
 <dialog id="keyDlg" aria-labelledby="keyTitle">
   <form method="dialog" class="sheet glass" id="keyForm">
     <h2 id="keyTitle">Connect Deepgram</h2>
-    <p>VocaLink hears speech through Deepgram. Setting it up takes about a minute, and new accounts come with free credit that covers hundreds of hours.</p>
+    <p id="keyLead">VocaLink hears speech through Deepgram. Setting it up takes about a minute, and new accounts come with free credit that covers hundreds of hours.</p>
     <ol>
-      <li>Sign up at <a href="https://console.deepgram.com/signup" target="_blank" rel="noopener">console.deepgram.com</a>.</li>
-      <li>Open <b>API Keys</b> and create a key with the default settings.</li>
+      <li>Sign up at <a id="keyLink" href="https://console.deepgram.com/signup" target="_blank" rel="noopener">console.deepgram.com</a>.</li>
+      <li id="keyStep">Open <b>API Keys</b> and create a key with the default settings.</li>
       <li>Paste it below.</li>
     </ol>
-    <div class="field"><label for="keyIn">Deepgram API key</label><input class="inp" id="keyIn" type="password" autocomplete="off" spellcheck="false" placeholder="Paste your key"></div>
-    <p class="note">Your key is saved in this browser only. Audio goes straight from your browser to Deepgram.</p>
+    <div class="field"><label for="keyIn" id="keyLbl">Deepgram API key</label><input class="inp" id="keyIn" type="password" autocomplete="off" spellcheck="false" placeholder="Paste your key"></div>
+    <p class="note" id="keyNote">Your key is saved in this browser only. Audio goes straight from your browser to Deepgram.</p>
     <div class="acts"><button type="button" class="g" id="keyLater">Later</button><button class="g solid" id="keySave" value="ok">Save key</button></div>
   </form>
 </dialog>
@@ -422,6 +435,16 @@ dialog.wide{max-width:min(640px,calc(100vw - 28px))}
   <form method="dialog" class="sheet glass">
     <h2 id="setTitle">Settings</h2>
     <div class="field">
+      <span class="lbl" id="sttLbl">Hearing speech</span>
+      <div class="seg glass" id="sttSeg" role="group" aria-labelledby="sttLbl" data-v="0">
+        <span class="thumb"></span>
+        <button type="button" data-v="deepgram" aria-pressed="true">Deepgram</button>
+        <button type="button" data-v="soniox" aria-pressed="false">Soniox</button>
+      </div>
+      <p class="note" id="sttNote"></p>
+    </div>
+    <div class="field" id="sttKeyField"><span class="lbl" id="sttKeyLbl">Deepgram key</span><button type="button" class="g" id="changeKey" style="align-self:flex-start">Change key</button></div>
+    <div class="field" id="trField">
       <span class="lbl" id="engLbl">Translation</span>
       <div class="seg glass" id="engSeg" role="group" aria-labelledby="engLbl" data-v="0">
         <span class="thumb"></span>
@@ -431,8 +454,17 @@ dialog.wide{max-width:min(640px,calc(100vw - 28px))}
       <p class="note" id="engNote">Fast and free. Good for everyday talk.</p>
     </div>
     <div class="field" id="claudeField" hidden><label for="claudeIn">Anthropic API key</label><input class="inp" id="claudeIn" type="password" autocomplete="off" spellcheck="false" placeholder="sk-ant-..."></div>
-    <label class="tg"><span>Lift quiet voices<small>Raises soft speakers before Deepgram hears them</small></span><span class="sw"><input type="checkbox" id="optBoost"><i></i></span></label>
-    <div class="field"><span class="lbl">Deepgram key</span><button type="button" class="g" id="changeKey" style="align-self:flex-start">Change key</button></div>
+    <div class="field">
+      <span class="lbl" id="vEngLbl">Voice for Read it aloud</span>
+      <div class="seg glass" id="vEngSeg" role="group" aria-labelledby="vEngLbl" data-v="0">
+        <span class="thumb"></span>
+        <button type="button" data-v="browser" aria-pressed="true">Your browser</button>
+        <button type="button" data-v="eleven" aria-pressed="false">ElevenLabs</button>
+      </div>
+      <p class="note" id="vEngNote"></p>
+    </div>
+    <div class="field" id="elevenField" hidden><label for="elevenIn">ElevenLabs API key</label><input class="inp" id="elevenIn" type="password" autocomplete="off" spellcheck="false" placeholder="Paste your key"></div>
+    <label class="tg"><span>Lift quiet voices<small>Raises soft speakers before they are transcribed</small></span><span class="sw"><input type="checkbox" id="optBoost"><i></i></span></label>
     <div class="acts"><button type="button" class="g" id="forget">Forget my keys</button><button class="g solid" value="ok">Done</button></div>
     <p class="note legal"><a href="/terms/">Terms</a> · <a href="/privacy/">Privacy</a></p>
   </form>
@@ -452,6 +484,11 @@ dialog.wide{max-width:min(640px,calc(100vw - 28px))}
     <p class="note legal"><a href="/terms/">Terms</a> · <a href="/privacy/">Privacy</a> · <a href="/brand/">Brand</a></p>
   </div>
 </dialog>
+
+<div class="explore-bar glass" id="exploreBar" role="region" aria-label="Exploring the pond">
+  <span>Move to lead the koi. Click the water for ripples. Drag to look around, scroll to move closer.</span>
+  <button type="button" class="g solid" id="pondBack">Back to VocaLink</button>
+</div>
 
 <div class="toasts" id="toasts" role="status" aria-live="polite"></div>
 
@@ -815,8 +852,8 @@ dialog.wide{max-width:min(640px,calc(100vw - 28px))}
     // camera
     mx+=(tmx-mx)*.05;my+=(tmy-my)*.05;
     var narrow=aspect<.8;
-    var ang=-.45+T*.012+mx*.18;
-    var rad=(12.8-focusS*4)*(narrow?1.5:1);
+    var ang=-.45+T*.012+mx*.18+(window.__pondYaw||0);
+    var rad=(12.8-focusS*4)*(narrow?1.5:1)*(window.__pondZoom||1);
     var hgt=(8.4-focusS*4.2+my*.7)*(narrow?1.25:1);
     camPos.set(Math.sin(ang)*rad,hgt,Math.cos(ang)*rad);
     camera.position.lerp(camPos,.06);
@@ -869,11 +906,13 @@ const langName = (c) => LANG_NAME[(c || '').split('-')[0]] || c;
 /* ---------- state ---------- */
 const S = {
   key: store.get('dgKey', ''), claudeKey: store.get('claudeKey', ''),
+  stt: store.get('stt', 'deepgram'), sonioxKey: store.get('sonioxKey', ''),
+  voiceEngine: store.get('voiceEngine', 'browser'), elevenKey: store.get('elevenKey', ''), elevenVoice: store.get('elevenVoice', 'EXAVITQu4vr4xnSDxMaL'),
   from: store.get('from2', 'auto'), to: store.get('to', 'en'), src: store.get('src', 'mic'), device: store.get('device', ''),
   diarize: store.get('diarize', true), live: store.get('live', true), speak: store.get('speak', false),
   voice: store.get('voice', ''), rate: store.get('rate', 1.05), engine: store.get('engine', 'google'), boost: store.get('boost', true),
 };
-const save = (k) => store.set({ key: 'dgKey', claudeKey: 'claudeKey' }[k] || k, S[k]);
+const save = (k) => store.set({ key: 'dgKey' }[k] || k, S[k]);
 const names = store.get('names', {});
 
 /* ---------- toasts ---------- */
@@ -914,7 +953,7 @@ function srcUI() { $('#devField').hidden = S.src !== 'mic'; $('#tabHint').hidden
 srcUI();
 
 $('#fromSel').onchange = (e) => { S.from = e.target.value; store.set('from2', S.from); autoHint(); if (running) restart(); };
-function autoHint() { $('#autoHint').hidden = S.from !== 'auto'; }
+function autoHint() { $('#autoHint').hidden = S.from !== 'auto' || S.stt === 'soniox'; }
 autoHint();
 $('#toSel').onchange = (e) => { S.to = e.target.value; save('to'); pairLbl(); loadVoices(); trCache.clear(); };
 $('#devSel').onchange = (e) => { S.device = e.target.value; save('device'); if (running) restart(); };
@@ -934,7 +973,7 @@ const rateFill = () => rate.style.setProperty('--p', ((rate.value - rate.min) / 
 rate.value = S.rate; rateFill();
 rate.oninput = () => { S.rate = +rate.value; save('rate'); rateFill(); };
 rate.onchange = () => speakNow(sampleLine());
-$('#voiceSel').onchange = (e) => { S.voice = e.target.value; save('voice'); speakNow(sampleLine()); };
+$('#voiceSel').onchange = (e) => { if (useEleven()) { S.elevenVoice = e.target.value; save('elevenVoice'); } else { S.voice = e.target.value; save('voice'); } speakNow(sampleLine()); };
 const sampleLine = () => ({ tl: 'Ganito ang tunog ko.', es: 'Así es como sueno.', fr: 'Voici ma voix.', de: 'So klinge ich.', ja: 'こんな声で話します。' }[S.to.split('-')[0]] || 'This is how I will sound.');
 
 async function listDevices() {
@@ -953,7 +992,17 @@ if (navigator.mediaDevices && navigator.mediaDevices.addEventListener) navigator
 
 /* ---------- voices ---------- */
 let voices = [];
+const ELEVEN_VOICES = [['EXAVITQu4vr4xnSDxMaL', 'Sarah, warm'], ['FGY2WhTYpPnrIDTdsKH5', 'Laura, bright'], ['XrExE9yKIg1WjnnlVkGX', 'Matilda, calm'], ['pFZP5JQG7iQjIQuC4Bku', 'Lily, soft'], ['JBFqnCBsd6RMkjVDRZzb', 'George, deep'], ['TX3LPaxmHKxFdv7VOQHJ', 'Liam, young'], ['cjVigY5qzO86Huf0OWal', 'Eric, smooth']];
+const ELEVEN_LANG = { tl: 'fil', 'zh-CN': 'zh' };
+const useEleven = () => S.voiceEngine === 'eleven' && !!S.elevenKey;
 function loadVoices() {
+  if (useEleven()) {
+    const sel = $('#voiceSel'); sel.innerHTML = ''; sel.disabled = false;
+    for (const [id, n] of ELEVEN_VOICES) sel.add(new Option(n, id));
+    sel.value = S.elevenVoice; $('#rateIn').hidden = true;
+    return;
+  }
+  $('#rateIn').hidden = false;
   if (!('speechSynthesis' in window)) return;
   const base = S.to.split('-')[0];
   const want = base === 'tl' ? ['fil', 'tl'] : base === 'zh' ? ['zh'] : [base];
@@ -970,7 +1019,41 @@ function loadVoices() {
 }
 if ('speechSynthesis' in window) { loadVoices(); speechSynthesis.addEventListener ? speechSynthesis.addEventListener('voiceschanged', loadVoices) : (speechSynthesis.onvoiceschanged = loadVoices); }
 let speaking = 0;
+let elevenQ = Promise.resolve(), elevenWaiting = 0, elevenAudio = null, elevenWarned = false;
+const ttsBusy = () => !!elevenAudio || ('speechSynthesis' in window && speechSynthesis.speaking);
 function speakNow(text) {
+  if (!text) return;
+  if (useEleven()) return speakEleven(text);
+  speakBrowser(text);
+}
+/** ElevenLabs: each line is fetched straight away and played in order, so lines never overlap. */
+function speakEleven(text) {
+  if (elevenWaiting > 2) return; // falling behind the conversation: skip rather than lag
+  elevenWaiting++;
+  const body = { text, model_id: 'eleven_flash_v2_5' };
+  const lc = ELEVEN_LANG[S.to] || S.to.split('-')[0];
+  if (/^[a-z]{2,3}$/.test(lc)) body.language_code = lc;
+  const got = fetch(`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(S.elevenVoice)}?output_format=mp3_44100_64`, {
+    method: 'POST', headers: { 'xi-api-key': S.elevenKey, 'content-type': 'application/json' }, body: JSON.stringify(body),
+  }).then((r) => (r.ok ? r.blob() : Promise.reject(r.status)));
+  got.catch(() => {}); // handled below, once it is this line's turn
+  elevenQ = elevenQ.then(() => got).then((blob) => new Promise((res) => {
+    const a = new Audio(URL.createObjectURL(blob));
+    elevenAudio = a;
+    const done = () => { URL.revokeObjectURL(a.src); if (elevenAudio === a) elevenAudio = null; res(); };
+    a.onended = done; a.onerror = done;
+    a.play().catch(done);
+  })).catch((code) => {
+    if (!elevenWarned) {
+      elevenWarned = true;
+      toast(code === 401 ? 'ElevenLabs did not accept the key, so your browser voice is reading instead.'
+        : code === 402 || code === 429 ? 'ElevenLabs has run out of credit for now, so your browser voice is reading instead.'
+        : 'ElevenLabs did not answer, so your browser voice is reading instead.', true);
+    }
+    speakBrowser(text);
+  }).finally(() => { elevenWaiting--; });
+}
+function speakBrowser(text) {
   if (!('speechSynthesis' in window) || !text) return;
   if (speaking > 2) { speechSynthesis.cancel(); speaking = 0; }
   const u = new SpeechSynthesisUtterance(text);
@@ -1034,7 +1117,7 @@ const spkName = (s) => names[s] || `Speaker ${s + 1}`;
 const nearBottom = () => EL.scroll.scrollHeight - EL.scroll.scrollTop - EL.scroll.clientHeight < 140;
 const scrollDown = () => { EL.scroll.scrollTop = EL.scroll.scrollHeight; };
 
-function addEntry(spk, text, start, end, quiet = false) {
+function addEntry(spk, text, start, end, quiet = false, given = null) {
   EL.empty.hidden = true;
   const stick = nearBottom();
   const e = { spk, text, tr: null, lang: null, at: new Date(), start, end };
@@ -1055,7 +1138,7 @@ function addEntry(spk, text, start, end, quiet = false) {
   EL.feed.append(li);
   if (stick) scrollDown();
   const trEl = li.querySelector('.tr');
-  const run = () => translate(text).then((r) => {
+  const run = () => (given ? Promise.resolve(given) : translate(text)).then((r) => {
     e.tr = r.text || text; e.lang = r.lang;
     const same = !!r.lang && r.lang.split('-')[0] === S.to.split('-')[0] && r.text.toLowerCase() === text.toLowerCase();
     trEl.className = 'tr reveal' + (same ? ' same' : '');
@@ -1109,7 +1192,7 @@ function showLive(text, finalPart) {
   src.textContent = full;
   const c = document.createElement('span'); c.className = 'caret'; src.append(c);
   caps({ spk: null, text: full, tr: null }, true);
-  if (!S.live) return;
+  if (!S.live || S.stt === 'soniox') return; // Soniox sends its own live translation
   clearTimeout(interimTimer);
   const seq = ++interimSeq;
   interimTimer = setTimeout(() => {
@@ -1244,9 +1327,10 @@ let running = false, stream = null, ctx = null, node = null, srcNode = null, gen
 let lanes = [], audioSec = 0, streamSec = 0, clock = 0, level = 0, sessionT0 = 0, lastCut = -1, lastWinner = null, decideTimer = 0;
 const anyOpen = () => lanes.some(l => l.open);
 const isAuto = () => lanes.length > 1;
-const laneLanguages = () => (S.from === 'auto' ? ['multi', 'tl'] : [S.from]);
+const laneLanguages = () => (S.stt === 'soniox' ? ['soniox'] : S.from === 'auto' ? ['multi', 'tl'] : [S.from]);
 const newLane = (language) => ({ language, model: 'nova-3', triedFallback: false, ws: null, open: false, retries: 0, keepTimer: 0, retryTimer: 0, backlog: [], words: [], interim: '', ema: 0.6, offset: 0, dead: false });
-const listeningSub = () => (S.src === 'tab' ? 'Hearing the shared tab' : 'Hearing your microphone') + (S.from === 'auto' ? ', detecting the language' : '');
+let lockedLabel = '';
+const listeningSub = () => (lockedLabel && lanes.length === 1 && lanes[0].narrowed ? `Locked to ${lockedLabel}` : (S.src === 'tab' ? 'Hearing the shared tab' : 'Hearing your microphone') + (S.from === 'auto' && S.stt !== 'soniox' ? ', detecting the language' : ''));
 
 function setGo(state, title, sub) {
   const b = $('#goBtn'); b.dataset.state = state;
@@ -1280,12 +1364,13 @@ async function getStream() {
 }
 
 function dgUrl(l) {
-  const p = new URLSearchParams({ model: l.model, interim_results: 'true', smart_format: 'true', punctuate: 'true', endpointing: '300', utterance_end_ms: '1000', vad_events: 'true', encoding: 'linear16', sample_rate: '16000', channels: '1', language: l.language });
+  const p = new URLSearchParams({ model: l.model, interim_results: 'true', smart_format: 'true', punctuate: 'true', endpointing: '450', utterance_end_ms: '1200', vad_events: 'true', encoding: 'linear16', sample_rate: '16000', channels: '1', language: l.language });
   if (S.diarize) p.set('diarize', 'true');
   return 'wss://api.deepgram.com/v1/listen?' + p;
 }
 
 function connect(l) {
+  if (l.language === 'soniox') return connectSoniox(l);
   const my = gen;
   l.open = false;
   let sock;
@@ -1321,6 +1406,107 @@ function connect(l) {
     if (!anyOpen()) { setGo('connecting', 'Reconnecting', 'What people say is kept meanwhile'); spin(); }
     l.retryTimer = setTimeout(() => { if (running && my === gen && !l.dead) connect(l); }, Math.min(4000, 250 * 2 ** l.retries));
   };
+}
+
+// ---------- Soniox: recognition, language detection and translation in one stream ----------
+const SONIOX_TARGET = { 'zh-CN': 'zh' };
+const freshUtt = () => ({ orig: '', tr: '', start: null, end: 0, langs: new Map(), conf: 0, n: 0, spk: null, lastWasTr: false, ended: false });
+function connectSoniox(l) {
+  const my = gen;
+  l.open = false; l.fatal = null;
+  if (!l.sx) l.sx = freshUtt();
+  let sock;
+  try { sock = new WebSocket('wss://stt-rt.soniox.com/transcribe-websocket'); } catch { return laneFailed(l, 'Could not reach Soniox.', true); }
+  l.ws = sock;
+  sock.binaryType = 'arraybuffer';
+  sock.onopen = () => {
+    if (my !== gen || l.dead) { try { sock.close(); } catch {} return; }
+    const hints = S.from === 'auto' || S.from === 'multi' ? ['tl', 'en'] : [S.from];
+    sock.send(JSON.stringify({
+      api_key: S.sonioxKey, model: 'stt-rt-v6', audio_format: 'pcm_s16le', sample_rate: 16000, num_channels: 1,
+      language_hints: hints, enable_language_identification: true, enable_endpoint_detection: true,
+      enable_speaker_diarization: !!S.diarize,
+      translation: { type: 'one_way', target_language: SONIOX_TARGET[S.to] || S.to },
+    }));
+    l.open = true; l.retries = 0;
+    l.offset = clock - l.backlog.length * 0.04;
+    setGo('live', 'Listening', listeningSub());
+    for (const b of l.backlog) sock.send(b);
+    streamSec += l.backlog.length * 0.04;
+    l.backlog = [];
+    clearInterval(l.keepTimer);
+    l.keepTimer = setInterval(() => { if (sock.readyState === 1) sock.send(JSON.stringify({ type: 'keepalive' })); }, 8000);
+  };
+  sock.onmessage = (ev) => { if (my === gen && !l.dead) { try { onSoniox(l, JSON.parse(ev.data)); } catch {} } };
+  sock.onerror = () => {};
+  sock.onclose = () => {
+    if (my !== gen || l.dead) return;
+    clearInterval(l.keepTimer);
+    const wasOpen = l.open; l.open = false;
+    if (!running) return;
+    sonioxEmit(l);
+    if (l.fatal) return laneFailed(l, l.fatal, true);
+    if (!wasOpen && l.retries >= 2) return laneFailed(l, 'Soniox would not connect. Check your key or internet.', true);
+    if (l.retries++ >= 6) return laneFailed(l, 'Lost the connection to Soniox. Press start to try again.', true);
+    setGo('connecting', 'Reconnecting', 'What people say is kept meanwhile'); spin();
+    l.retryTimer = setTimeout(() => { if (running && my === gen && !l.dead) connectSoniox(l); }, Math.min(4000, 250 * 2 ** l.retries));
+  };
+}
+
+function onSoniox(l, d) {
+  if (d.error_code) {
+    const c = +d.error_code;
+    l.fatal = c === 401 || c === 403 ? 'Soniox did not accept the key. You can change it in Settings.'
+      : c === 402 ? 'Your Soniox account has run out of credit.'
+      : 'Soniox stopped: ' + (d.error_message || 'unknown error') + '.';
+    return;
+  }
+  const toks = Array.isArray(d.tokens) ? d.tokens : [];
+  if (!toks.length) return;
+  const target = (SONIOX_TARGET[S.to] || S.to).split('-')[0];
+  let tent = '', tentTr = '';
+  for (const t of toks) {
+    const isTr = t.translation_status === 'translation';
+    const inTarget = !!t.language && t.language.split('-')[0] === target;
+    if (!t.is_final) { if (isTr) { if (inTarget) tentTr += t.text; } else tent += t.text; continue; }
+    if (t.text === '<end>' || t.text === '<fin>') { l.sx.ended = true; scheduleSoniox(l); continue; }
+    let x = l.sx;
+    if (!isTr) {
+      // new speech after the end of a sentence, or a different speaker: finish the last line first
+      const spk = t.speaker != null ? String(t.speaker) : null;
+      if (x.orig.trim() && (x.ended || (S.diarize && spk && x.spk && spk !== x.spk))) { sonioxEmit(l); x = l.sx; }
+      x.orig += t.text;
+      if (typeof t.start_ms === 'number' && x.start == null) x.start = l.offset + t.start_ms / 1000;
+      if (typeof t.end_ms === 'number') x.end = l.offset + t.end_ms / 1000;
+      if (t.language && t.text.trim()) x.langs.set(t.language, (x.langs.get(t.language) || 0) + 1);
+      if (typeof t.confidence === 'number') { x.conf += t.confidence; x.n++; }
+      if (spk && !x.spk) x.spk = spk;
+    }
+    if (inTarget) {
+      const gap = isTr !== x.lastWasTr && x.tr && !/\s$/.test(x.tr) && !/^\s/.test(t.text);
+      x.tr += (gap ? ' ' : '') + t.text;
+      x.lastWasTr = isTr;
+    }
+  }
+  const x = l.sx;
+  showLive(x.ended ? '' : tent, x.ended ? '' : x.orig.trim());
+  if (S.live && !x.ended) EL.liveTr.textContent = (x.tr + tentTr).trim();
+}
+// translations of a finished sentence can arrive just after its end marker: wait a moment for them
+function scheduleSoniox(l) { clearTimeout(l.sxTimer); l.sxTimer = setTimeout(() => sonioxEmit(l), 450); }
+function sonioxEmit(l) {
+  clearTimeout(l.sxTimer);
+  const x = l.sx;
+  if (!x) return;
+  l.sx = freshUtt();
+  const text = x.orig.trim();
+  if (!text) { showLive('', ''); return; }
+  const lang = [...x.langs].sort((a, b) => b[1] - a[1])[0];
+  const spk = S.diarize && x.spk ? Math.max(0, parseInt(x.spk, 10) - 1 || 0) : null;
+  const now = sessionT0 ? (performance.now() - sessionT0) / 1000 : 0;
+  const d = Math.max(0.6, (x.end || 0) - (x.start || 0));
+  addEntry(spk, text, Math.max(0, now - d), now, x.n > 0 && x.conf / x.n < 0.5, { text: x.tr.trim() || text, lang: lang ? lang[0] : null });
+  showLive('', '');
 }
 
 function laneFailed(l, msg, fatal = false) {
@@ -1394,6 +1580,40 @@ function dominant(ws) {
 }
 const speakerKey = (spk) => (S.diarize && spk !== null ? 's' + spk : 'all');
 const speakerLabel = (key) => (key === 'all' ? 'this conversation' : spkName(+key.slice(1)));
+const topLang = (ws) => {
+  const n = new Map();
+  for (const w of ws) if (w.lang) n.set(w.lang.split('-')[0], (n.get(w.lang.split('-')[0]) || 0) + 1);
+  const top = [...n].sort((a, b) => b[1] - a[1])[0];
+  return top ? top[0] : null;
+};
+/** Everyone heard so far is locked to the same language: listen with that one model only. */
+function narrow() {
+  if (!running || !isAuto()) return;
+  const all = [...locks.values()];
+  if (!all.length || !all[0].code || all.some(x => x.code !== all[0].code)) return;
+  const keep = newLane(all[0].code);
+  keep.narrowed = true;
+  swapLanes([keep]);
+  lockedLabel = all[0].lane === 'tl' ? 'Tagalog and Taglish' : langName(all[0].code);
+  $('#goSub').textContent = listeningSub();
+}
+/** The language seems to have changed: go back to listening with both models. */
+function widen() {
+  if (!running) return;
+  locks.clear(); evidence.clear(); lastWinner = null; lockedLabel = '';
+  swapLanes(['multi', 'tl'].map(newLane));
+  $('#goSub').textContent = listeningSub();
+  toast('The language seems to have changed. Detecting again.');
+}
+function swapLanes(next) {
+  for (const l of lanes) {
+    l.dead = true; clearInterval(l.keepTimer); clearTimeout(l.retryTimer);
+    const w = l.ws; l.ws = null; l.open = false;
+    if (w) { try { if (w.readyState === 1) w.send(JSON.stringify({ type: 'CloseStream' })); } catch {} setTimeout(() => { try { w.close(1000); } catch {} }, 600); }
+  }
+  lanes = next; lastCut = -1;
+  lanes.forEach(connect);
+}
 const laneName = (lane, ws) => {
   if (lane === 'tl') return 'Tagalog and Taglish';
   const n = new Map();
@@ -1405,9 +1625,17 @@ const laneName = (lane, ws) => {
 /** Turn the right lane's words into transcript lines, and drop the same words from the others. */
 function decide() {
   clearTimeout(decideTimer);
-  const cand = lanes.filter(l => !l.dead && l.words.length);
+  const cand = lanes.filter(l => !l.dead && l.language !== 'soniox' && l.words.length);
   if (!cand.length) { render(); return; }
-  if (!isAuto()) { emitWords(cand[0], cand[0].words, false); return; }
+  if (!isAuto()) {
+    const l = cand[0];
+    if (l.narrowed && l.words.length >= 3) {
+      l.low = avgConf(l.words) < 0.55 ? (l.low || 0) + 1 : 0;
+      if (l.low >= 3) { emitWords(l, l.words, false); widen(); return; }
+    }
+    emitWords(l, l.words, false);
+    return;
+  }
 
   const lo = Math.min(...cand.flatMap(l => l.words.map(w => w.s))), hi = Math.max(...cand.flatMap(l => l.words.map(w => w.e)));
   const tlLane = lanes.find(l => l.language === 'tl' && !l.dead);
@@ -1437,9 +1665,10 @@ function decide() {
       const lane = ev.tl >= ev.multi ? 'tl' : 'multi';
       const lw = cand.find(l => l.language === lane);
       const name = laneName(lane, lw ? lw.words : []);
-      locks.set(key, { lane, name, strikes: 0 });
+      locks.set(key, { lane, name, code: lane === 'tl' ? 'tl' : topLang(lw ? lw.words : []), strikes: 0 });
       toast(`Locked onto ${name} for ${speakerLabel(key)}.`);
       win = lw || best;
+      setTimeout(narrow, 0); // after this sentence is written
     }
   }
 
@@ -1469,7 +1698,7 @@ function emitWords(lane, words, multiLane) {
   }
   render();
 }
-const flush = decide;
+function flush() { for (const l of lanes) if (l.language === 'soniox') sonioxEmit(l); decide(); }
 
 /** The live line follows whichever lane is doing better right now. */
 function render() {
@@ -1481,12 +1710,12 @@ function render() {
 
 async function start() {
   if (running || starting) return;
-  if (!S.key) { openKey(); return; }
+  if (!(S.stt === 'soniox' ? S.sonioxKey : S.key)) { openKey(S.stt); return; }
   if (!navigator.mediaDevices) return toast('Audio needs a secure (https) page.', true);
   starting = true;
   if (!sessionT0) sessionT0 = performance.now();
   running = true; gen++;
-  lanes = laneLanguages().map(newLane); lastCut = -1; lastWinner = null; clock = 0; locks.clear(); evidence.clear();
+  lanes = laneLanguages().map(newLane); lastCut = -1; lastWinner = null; clock = 0; locks.clear(); evidence.clear(); lockedLabel = '';
   setGo('connecting', 'Connecting', S.src === 'tab' ? 'Choose a tab and share its audio' : 'Allow the microphone if asked'); spin();
   try {
     stream = await getStream();
@@ -1507,7 +1736,7 @@ async function start() {
       const open = anyOpen();
       window.__vlLevel = open ? level : 0;
       if (!running) return;
-      if (selfVoice && 'speechSynthesis' in window && speechSynthesis.speaking) new Int16Array(data.pcm).fill(0);
+      if (selfVoice && ttsBusy()) new Int16Array(data.pcm).fill(0);
       clock += 0.04;
       if (open) audioSec += 0.04;
       for (const l of lanes) {
@@ -1538,7 +1767,7 @@ function teardown() {
     clearInterval(l.keepTimer); clearTimeout(l.retryTimer);
     const w = l.ws; l.ws = null; l.open = false;
     if (w) {
-      try { if (w.readyState === 1) w.send(JSON.stringify({ type: 'CloseStream' })); } catch {}
+      try { if (w.readyState === 1) w.send(l.language === 'soniox' ? '' : JSON.stringify({ type: 'CloseStream' })); } catch {}
       setTimeout(() => { try { w.close(1000); } catch {} }, 600);
     }
   }
@@ -1578,14 +1807,40 @@ setInterval(() => {
 
 /* ---------- keys and settings ---------- */
 $('#keyLater').onclick = () => $('#keyDlg').close('cancel');
-function openKey() { $('#keyIn').value = S.key; if (!$('#keyDlg').open) $('#keyDlg').showModal(); setTimeout(() => $('#keyIn').focus(), 60); }
+const KEYS = {
+  deepgram: { name: 'Deepgram', prop: 'key', url: 'https://console.deepgram.com/signup', host: 'console.deepgram.com',
+    lead: 'VocaLink hears speech through Deepgram. Setting it up takes about a minute, and new accounts come with free credit that covers hundreds of hours.',
+    step: 'Open <b>API Keys</b> and create a key with the default settings.', note: 'Your key is saved in this browser only. Audio goes straight from your browser to Deepgram.' },
+  soniox: { name: 'Soniox', prop: 'sonioxKey', url: 'https://console.soniox.com', host: 'console.soniox.com',
+    lead: 'Soniox hears Tagalog and Taglish natively, follows people switching languages mid-sentence, and translates as well.',
+    step: 'Open <b>API Keys</b> and create a key.', note: 'Your key is saved in this browser only. Audio goes straight from your browser to Soniox.' },
+  eleven: { name: 'ElevenLabs', prop: 'elevenKey', url: 'https://elevenlabs.io/app/settings/api-keys', host: 'elevenlabs.io',
+    lead: 'ElevenLabs reads translations aloud in natural voices.',
+    step: 'Open <b>API Keys</b> and create a key that can use Text to Speech.', note: 'Your key is saved in this browser only. Translations go straight from your browser to ElevenLabs.' },
+};
+let keyFor = 'deepgram';
+function openKey(which = 'deepgram') {
+  keyFor = which; const k = KEYS[which];
+  $('#keyTitle').textContent = 'Connect ' + k.name;
+  $('#keyLead').textContent = k.lead;
+  $('#keyLink').href = k.url; $('#keyLink').textContent = k.host;
+  $('#keyStep').innerHTML = k.step;
+  $('#keyLbl').textContent = k.name + ' API key';
+  $('#keyNote').textContent = k.note;
+  $('#keyIn').value = S[k.prop] || '';
+  if (!$('#keyDlg').open) $('#keyDlg').showModal();
+  setTimeout(() => $('#keyIn').focus(), 60);
+}
 $('#keyDlg').addEventListener('close', () => {
   if ($('#keyDlg').returnValue !== 'ok') return;
   $('#keyDlg').returnValue = '';
   const v = $('#keyIn').value.trim();
   if (!v) return toast('Paste a key first.', true);
-  if (!/^[A-Za-z0-9_.\-]{20,}$/.test(v)) return toast('That does not look like a Deepgram key.', true);
-  S.key = v; save('key'); toast('Key saved. Press start when you are ready.');
+  const k = KEYS[keyFor];
+  if (!/^[A-Za-z0-9_.\-]{20,}$/.test(v)) return toast(`That does not look like a ${k.name} key.`, true);
+  S[k.prop] = v; save(k.prop);
+  if (keyFor === 'eleven') { $('#elevenIn').value = v; loadVoices(); toast('ElevenLabs is connected.'); }
+  else toast('Key saved. Press start when you are ready.');
 });
 const setEng = seg($('#engSeg'), S.engine, (v) => { S.engine = v; save('engine'); engUI(); trCache.clear(); });
 function engUI() {
@@ -1602,18 +1857,40 @@ $('#setBtn').onclick = () => $('#setDlg').showModal();
 $('#setDlg').addEventListener('close', () => {
   if (S.engine === 'claude' && !S.claudeKey) { S.engine = 'google'; save('engine'); setEng('google'); engUI(); toast('Claude needs an Anthropic key, so Google stays on.'); }
 });
-$('#changeKey').onclick = () => { $('#setDlg').close(); openKey(); };
+$('#changeKey').onclick = () => { $('#setDlg').close(); openKey(S.stt); };
+seg($('#sttSeg'), S.stt, (v) => { S.stt = v; save('stt'); sttUI(); trCache.clear(); if (running) restart(); });
+function sttUI() {
+  const sx = S.stt === 'soniox';
+  $('#sttNote').textContent = sx
+    ? 'Hears Tagalog and Taglish natively, follows language switches mid-sentence, and translates by itself. Uses your Soniox key.'
+    : 'Fast and accurate. Auto-detect listens with two models to catch Tagalog. Uses your Deepgram key.';
+  $('#sttKeyLbl').textContent = (sx ? 'Soniox' : 'Deepgram') + ' key';
+  $('#changeKey').textContent = (sx ? S.sonioxKey : S.key) ? 'Change key' : 'Add key';
+  $('#trField').hidden = sx; if (sx) $('#claudeField').hidden = true; else engUI();
+  if (typeof autoHint === 'function') autoHint();
+}
+seg($('#vEngSeg'), S.voiceEngine, (v) => { S.voiceEngine = v; save('voiceEngine'); vEngUI(); loadVoices(); });
+function vEngUI() {
+  const el = S.voiceEngine === 'eleven';
+  $('#elevenField').hidden = !el;
+  $('#vEngNote').textContent = el ? 'Natural voices in about 30 languages. Uses your ElevenLabs key.' : 'Free, and works offline. How natural it sounds depends on your device.';
+}
+$('#elevenIn').value = S.elevenKey;
+$('#elevenIn').addEventListener('input', () => { S.elevenKey = $('#elevenIn').value.trim(); save('elevenKey'); loadVoices(); });
+sttUI(); vEngUI();
 $('#forget').onclick = () => {
-  S.key = ''; S.claudeKey = ''; store.del('dgKey'); store.del('claudeKey'); $('#claudeIn').value = '';
+  S.key = ''; S.claudeKey = ''; S.sonioxKey = ''; S.elevenKey = ''; for (const k of ['dgKey', 'claudeKey', 'sonioxKey', 'elevenKey']) store.del(k); $('#claudeIn').value = ''; $('#elevenIn').value = ''; sttUI(); loadVoices();
   if (running) stop();
   S.engine = 'google'; save('engine'); setEng('google'); engUI();
-  $('#setDlg').close(); toast('Both keys were removed from this browser.');
+  $('#setDlg').close(); toast('All your keys were removed from this browser.');
 };
 
 /* ---------- keyboard ---------- */
 document.addEventListener('keydown', (e) => {
   if (e.metaKey || e.ctrlKey || e.altKey || e.repeat) return;
   if (e.key === 'Escape' && !$('#caps').hidden) { closeCaps(); return; }
+  if (e.key === 'Escape' && document.body.classList.contains('explore')) { explore(false); return; }
+  if ((e.key === 'p' || e.key === 'P') && !e.target.closest('input, select, textarea, [contenteditable="true"], dialog')) { explore(!document.body.classList.contains('explore')); return; }
   if (e.target.closest('input, select, textarea, [contenteditable="true"], dialog, .menu')) return;
   if (e.code === 'Space') {
     if (e.target.closest('button, a, .chip')) return; // the focused control handles its own space press
@@ -1639,9 +1916,28 @@ document.addEventListener('click', (e) => { if (e.target.closest && e.target.clo
 const fromHash = () => { if (location.hash === '#discord' || location.hash === '#plans' || location.hash === '#pricing') openPlans(); };
 addEventListener('hashchange', fromHash);
 
+/* ---------- explore the pond ---------- */
+let yaw = 0, zoom = 1, dragX = null;
+function explore(on) {
+  document.body.classList.toggle('explore', on);
+  $('.app').inert = on;
+  if (on) $('#pondBack').focus(); else $('#pondBtn').focus();
+}
+$('#pondBtn').onclick = () => explore(true);
+$('#pondBack').onclick = () => explore(false);
+const pondEl = $('#pond');
+pondEl.addEventListener('pointerdown', (e) => { if (!document.body.classList.contains('explore')) return; dragX = e.clientX; document.body.classList.add('dragging'); });
+addEventListener('pointermove', (e) => { if (dragX === null) return; yaw -= (e.clientX - dragX) * 0.006; dragX = e.clientX; window.__pondYaw = yaw; }, { passive: true });
+addEventListener('pointerup', () => { dragX = null; document.body.classList.remove('dragging'); });
+addEventListener('wheel', (e) => {
+  if (!document.body.classList.contains('explore')) return;
+  zoom = Math.max(0.55, Math.min(1.45, zoom * (1 + Math.sign(e.deltaY) * 0.06)));
+  window.__pondZoom = zoom;
+}, { passive: true });
+
 /* first visit */
 fromHash();
-if (!S.key && !plansDlg.open) setTimeout(() => { if (!S.key && !$('#keyDlg').open && !plansDlg.open) openKey(); }, 1100);
+if (!S.key && !plansDlg.open) setTimeout(() => { if (!S.key && !$('#keyDlg').open && !plansDlg.open) openKey('deepgram'); }, 1100);
 window.__vl = { S, log, get running() { return running; }, get lanes() { return lanes; } };
 })();
 </script>
