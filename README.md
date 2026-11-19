@@ -1,3 +1,10 @@
+<p>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="brand/logo-dark.png">
+    <img alt="VocaLink" src="brand/logo-light.png" height="64">
+  </picture>
+</p>
+
 # VocaLink website
 
 The website for VocaLink, live voice translation for calls. The home page is a working translator that runs in the browser, set over a night-time Three.js koi pond. The same page is where people add the VocaLink bot to their Discord server and choose a plan.
@@ -10,17 +17,20 @@ The Discord bot lives in [datArtist-io/VocaLink-discord-bot](https://github.com/
 
 | Path | What it is |
 |---|---|
-| `/` | VocaLink Lite, the translator, with the "For Discord" panel (also opened by `/#discord`) |
+| `/` | The translator, with the "For Discord" panel (also opened by `/#discord`) |
 | `/terms/` | Terms of use |
 | `/privacy/` | Privacy |
+| `/brand/` | The logo, colours and type, with files to download |
 | `/app` | Redirects to `/` (the translator's old address) |
 
-## VocaLink Lite, the translator
+## The translator
 
-Nothing runs on a server, so the only cost is Deepgram's speech recognition, paid with each visitor's own key (about $0.46 an hour; new Deepgram accounts get $200 of free credit).
+Nothing runs on a server, so the only cost is Deepgram's speech recognition, paid with each visitor's own key: about $0.92 an hour with auto-detect, or $0.46 with one language chosen. New Deepgram accounts get $200 of free credit.
 
 1. Audio comes from the microphone, or from a shared browser tab or screen. Sharing the tab where Discord is open lets it follow a call with no extra software.
-2. An audio worklet converts the audio to 16 kHz, lifts quiet voices, and streams it to Deepgram's live API. It uses `nova-3`, and falls back to `nova-2` for languages `nova-3` does not cover. "Taglish" uses the Tagalog model; "Mixed" uses Deepgram's multilingual mode.
+2. An audio worklet converts the audio to 16 kHz, lifts quiet voices, and streams it to Deepgram's live API. It uses `nova-3`, and falls back to `nova-2` for languages `nova-3` does not cover.
+   - **Auto-detect (the default)** runs two models on the same audio: Deepgram's multilingual model (English, Spanish, French, German, Hindi, Russian, Portuguese, Japanese, Italian and Dutch) and its Tagalog model, which also handles Taglish. For each sentence it keeps the version heard more confidently. If one model is unavailable, the other carries on.
+   - **Choosing one language** uses a single model and costs half as much.
 3. Words appear while people are still talking. Each finished sentence is translated with Google Translate's free web endpoint, or with Claude if the visitor adds an Anthropic key in Settings.
 4. The browser can read each translation aloud with its own voices. While it speaks, the microphone input is muted, so it never translates itself.
 

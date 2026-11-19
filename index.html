@@ -3,13 +3,23 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>VocaLink</title>
+<title>VocaLink: live voice translation</title>
 <meta name="description" content="Live voice translation for calls. Hear people in their language and read or hear them in yours, about a second behind. In your browser, or as a Discord bot for your whole server.">
 <meta name="theme-color" content="#040d12">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;1,9..144,300;1,9..144,400&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%23040d12'/%3E%3Cpath d='M7 16h3l2-6 3 12 3-9 2 5 2-2h3' fill='none' stroke='%23ff8a3d' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;1,9..144,300;1,9..144,400&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Schibsted+Grotesk:wght@600&display=swap" rel="stylesheet">
+<link rel="icon" href="/brand/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/brand/apple-touch-icon.png">
+<link rel="manifest" href="/site.webmanifest">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="VocaLink">
+<meta property="og:title" content="VocaLink: talk in your language, everyone hears theirs">
+<meta property="og:description" content="Live voice translation, in your browser and on Discord. Built for Tagalog, English and Taglish first.">
+<meta property="og:image" content="https://vocalinktest.vercel.app/brand/og.png">
+<meta property="og:url" content="https://vocalinktest.vercel.app/">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://vocalinktest.vercel.app/brand/og.png">
 <style>
 :root{
   --serif:'Fraunces', Georgia, serif;
@@ -72,9 +82,10 @@ button,select,input{font:inherit;color:inherit}
 /* layout */
 .app{position:relative;z-index:2;min-height:100%;display:grid;grid-template-rows:auto 1fr;max-width:1240px;margin:0 auto;padding:18px 22px 22px}
 .bar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:2px 2px 16px}
-.mark{display:flex;align-items:baseline;gap:7px;text-decoration:none;color:var(--fg);text-shadow:0 2px 18px rgba(0,0,0,.6)}
-.mark b{font:400 25px/1 var(--serif);letter-spacing:-.01em}
-.mark i{font:italic 300 25px/1 var(--serif);color:var(--acc)}
+.mark{display:flex;align-items:center;gap:11px;text-decoration:none;color:var(--fg);text-shadow:0 2px 18px rgba(0,0,0,.6)}
+.mark .logo{width:34px;height:34px;flex:none;transition:transform .5s var(--spring)}
+.mark:hover .logo{transform:rotate(-6deg) scale(1.06)}
+.mark b{font:600 22px/1 'Schibsted Grotesk',var(--sans);letter-spacing:-.03em}
 .bar-r{display:flex;align-items:center;gap:8px}
 .meter{display:flex;align-items:center;gap:10px;padding:9px 14px;border-radius:999px;color:var(--mute)}
 .meter .dot{width:6px;height:6px;border-radius:50%;background:var(--faint);transition:background .3s,box-shadow .3s}
@@ -286,7 +297,7 @@ dialog.wide{max-width:min(880px,calc(100vw - 28px))}
 
 <div class="app">
   <header class="bar">
-    <a class="mark" href="/" aria-label="VocaLink home"><b>VocaLink</b><i>Lite</i></a>
+    <a class="mark" href="/" aria-label="VocaLink home"><svg class="logo" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="16" fill="#071a20"/><rect x=".75" y=".75" width="62.5" height="62.5" rx="15.25" fill="none" stroke="#7ff0dc" stroke-opacity=".18" stroke-width="1.5"/><path d="M13 33h7l4.5-12 7 24 6.5-18 4 10 3.5-4H51" fill="none" stroke="#ff8a3d" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg><b>VocaLink</b></a>
     <div class="bar-r">
       <button class="g" id="botBtn" aria-haspopup="dialog" title="Add VocaLink to your Discord server"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="9" cy="9" r="3.2"/><circle cx="16.5" cy="10" r="2.4"/><path d="M3.5 19c.6-3 2.8-4.6 5.5-4.6s4.9 1.6 5.5 4.6M14.6 15c2.6-.4 4.9.8 5.6 3.6"/></svg><span>For Discord</span></button>
       <div class="meter glass mono" id="meter" title="Listening time this session and the estimated Deepgram cost">
@@ -388,7 +399,7 @@ dialog.wide{max-width:min(880px,calc(100vw - 28px))}
 <dialog id="keyDlg" aria-labelledby="keyTitle">
   <form method="dialog" class="sheet glass" id="keyForm">
     <h2 id="keyTitle">Connect Deepgram</h2>
-    <p>VocaLink Lite hears speech through Deepgram. Setting it up takes about a minute, and the free credit covers hundreds of hours.</p>
+    <p>VocaLink hears speech through Deepgram. Setting it up takes about a minute, and the free credit covers hundreds of hours.</p>
     <ol>
       <li>Sign up at <a href="https://console.deepgram.com/signup" target="_blank" rel="noopener">console.deepgram.com</a>.</li>
       <li>Open <b>API Keys</b> and create a key with the default settings.</li>
@@ -447,7 +458,7 @@ dialog.wide{max-width:min(880px,calc(100vw - 28px))}
       </section>
     </div>
     <p class="note">Plans are per server, so one purchase covers everyone in it. Choose a plan, add VocaLink to your server, and Discord shows the purchase right there. Discord handles the payment, and you can cancel from Discord's settings at any time.</p>
-    <p class="note legal"><a href="/terms/">Terms</a> · <a href="/privacy/">Privacy</a> · This page itself stays free with your own Deepgram key.</p>
+    <p class="note legal"><a href="/terms/">Terms</a> · <a href="/privacy/">Privacy</a> · <a href="/brand/">Brand</a> · This page itself stays free with your own Deepgram key.</p>
   </div>
 </dialog>
 
@@ -1171,7 +1182,7 @@ menu.onclick = async (ev) => {
   const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
   const who = (e) => e.spk !== null ? spkName(e.spk) + ': ' : '';
   if (b.dataset.x === 'txt') {
-    const head = `VocaLink Lite transcript, ${new Date().toLocaleString()}\nTranslated into ${langName(S.to)}\n\n`;
+    const head = `VocaLink transcript, ${new Date().toLocaleString()}\nTranslated into ${langName(S.to)}\n\n`;
     download(`vocalink-${stamp}.txt`, head + log.map(e => `[${fmtClock(e.at)}] ${who(e)}${e.text}\n    ${e.tr ?? '(not translated)'}`).join('\n\n') + '\n');
     toast('Transcript saved.');
   } else if (b.dataset.x === 'srt') {
@@ -1197,7 +1208,7 @@ $('#floatBtn').onclick = async () => {
     try { const st = pip.document.createElement('style'); st.textContent = [...sh.cssRules].map(r => r.cssText).join('\n'); pip.document.head.append(st); }
     catch { if (sh.href) { const l = pip.document.createElement('link'); l.rel = 'stylesheet'; l.href = sh.href; pip.document.head.append(l); } }
   }
-  pip.document.title = 'VocaLink Lite';
+  pip.document.title = 'VocaLink';
   Object.assign(pip.document.body.style, { margin: 0, height: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--bg)' });
   const scroll = EL.scroll, live = EL.live, home = scroll.parentElement;
   pip.document.body.append(scroll, live);
