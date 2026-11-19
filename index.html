@@ -324,7 +324,8 @@ body:not(.running) .live-idle{visibility:hidden}
 .live-tr{font-size:clamp(21px,2vw,25px);color:#e6efe9;opacity:.62}
 
 /* ===== the dock ===== */
-.dock{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:10;display:flex;align-items:center;gap:12px;
+.dockwrap{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:10;display:flex;flex-direction:column;align-items:center;gap:10px;width:max-content;max-width:calc(100vw - 32px)}
+.dock{position:relative;display:flex;align-items:center;gap:12px;
   padding:9px 10px 9px 9px;border-radius:999px;width:max-content;max-width:calc(100vw - 32px);
   background:linear-gradient(180deg,rgba(18,46,52,.72),rgba(6,20,26,.78));
   box-shadow:inset 0 1px 0 rgba(210,255,244,.16),inset 0 0 0 1px rgba(170,230,215,.14),0 24px 60px -18px rgba(0,0,0,.85),0 2px 10px rgba(0,0,0,.3)}
@@ -353,7 +354,7 @@ body:not(.running) .live-idle{visibility:hidden}
 .pair select:hover{background-color:rgba(127,240,220,.06);box-shadow:none}
 .pair .arrow{width:14px;height:14px;color:var(--acc);flex:none}
 .opts,.dock .tools{display:flex;gap:4px;flex-wrap:nowrap}
-.tg.opt{position:relative;width:36px;height:36px;padding:0;margin:0;border-radius:50%;display:grid;place-items:center;color:var(--mute);cursor:pointer;transition:background .25s,color .25s,box-shadow .25s}
+.tg.opt{position:relative;width:36px;height:36px;padding:0;margin:0;border-radius:50%;display:grid;place-items:center;justify-content:center;align-content:center;gap:0;color:var(--mute);cursor:pointer;transition:background .25s,color .25s,box-shadow .25s}
 .tg.opt:hover{background:rgba(127,240,220,.07);color:var(--fg)}
 .tg.opt input{position:absolute;inset:0;opacity:0;margin:0;cursor:pointer}
 .tg.opt svg{width:18px;height:18px;pointer-events:none}
@@ -363,27 +364,27 @@ body:not(.running) .live-idle{visibility:hidden}
 .dock .tools .g.icon:hover{color:var(--fg);background:rgba(127,240,220,.07)}
 .dock .tools .g.icon.on{color:var(--glow)}
 .dock .tools .g::after{display:none}
-.dock-hint{position:fixed;left:50%;bottom:94px;transform:translateX(-50%);z-index:10;margin:0;padding:10px 16px;border-radius:14px;font-size:13px;color:var(--mute);max-width:min(520px,calc(100vw - 32px));text-align:center}
+.dock-hint{position:relative;margin:0;padding:10px 16px;border-radius:14px;font-size:13px;color:var(--mute);max-width:min(520px,calc(100vw - 32px));text-align:center}
 body.running .dock-hint{display:none}
 .voice{display:grid;grid-template-columns:1fr 92px;gap:10px;align-items:center}
-body.explore .dock,body.explore .dock-hint{opacity:0;pointer-events:none}
+body.explore .dockwrap{opacity:0;pointer-events:none}
+.dockwrap{transition:opacity .6s var(--ease)}
 .dock,.dock-hint{transition:opacity .6s var(--ease)}
 @media (max-width:1060px){
   .go-text{min-width:0;max-width:130px}
   .go-text span{display:none}
 }
 @media (max-width:860px){
-  .dock{left:12px;right:12px;bottom:12px;transform:none;width:auto;max-width:none;border-radius:24px;flex-wrap:wrap;justify-content:center;row-gap:8px;padding:10px}
+  .dockwrap{left:12px;right:12px;bottom:12px;transform:none;width:auto;max-width:none}
+  .dock{width:100%;border-radius:24px;flex-wrap:wrap;justify-content:center;row-gap:8px;padding:10px}
   .dock .sep{display:none}
   .go-text{flex:1;max-width:none}
   .stage{padding-bottom:150px}
   .reader{height:calc(100dvh - 70px - 150px)}
-  .dock-hint{bottom:140px}
 }
 @media (max-width:560px){
   .stage{padding-bottom:204px}
   .reader{height:calc(100dvh - 64px - 204px)}
-  .dock-hint{bottom:196px}
   .pair select{max-width:118px}
   .dock .seg button span{display:none}
   .empty h2{font-size:44px}
@@ -426,7 +427,7 @@ body.explore .dock,body.explore .dock-hint{opacity:0;pointer-events:none}
       <h1 class="sr">Conversation <em id="pairLbl"></em></h1>
       <div class="scroll" id="scroll">
         <div class="empty" id="empty">
-          <h2>Hear it in theirs.<br><em>Read it in yours.</em></h2>
+          <h2>Talk in your language.<br><em>Everyone hears theirs.</em></h2>
           <p class="lead">Press the orange button and talk, or share the tab your call is in. Words appear as they are spoken, and the translation follows about a second later.</p>
           <p class="also">In a Discord call? <button type="button" class="linkish" data-open="plans">Add VocaLink to your server</button> and everyone hears the others in their own language.</p>
         </div>
@@ -439,6 +440,7 @@ body.explore .dock,body.explore .dock-hint{opacity:0;pointer-events:none}
     </section>
   </main>
 
+  <div class="dockwrap">
   <p class="dock-hint glass" id="tabHint" hidden>Choose the tab your call is in (or your whole screen on Windows) and turn on <b>Share audio</b>. Works in Chrome and Edge.</p>
   <section class="dock glass" aria-label="Listening controls">
     <button class="go" id="goBtn" data-state="idle" aria-label="Start listening">
@@ -472,6 +474,7 @@ body.explore .dock,body.explore .dock-hint{opacity:0;pointer-events:none}
       <button class="g icon" id="clearBtn" aria-label="Clear the transcript" title="Clear"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12"/></svg></button>
     </div>
   </section>
+  </div>
 </div>
 
 <div class="menu glass" id="saveMenu" role="menu" hidden>
