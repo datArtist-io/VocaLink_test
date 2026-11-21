@@ -1195,10 +1195,36 @@ const log = [];
 const fmtClock = (d) => d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 const spkColor = (s) => `var(--s${s % 6})`;
 const spkName = (s) => names[s] || `Speaker ${s + 1}`;
+
+// Hesitation sounds and one-word back-channels make a transcript hard to read. They are taken out
+// of each line, and a line made only of them is not shown.
+const HESITATE = /(,\s*)?(?<![\p{L}'’-])(?:uh-huh|u+h*m+|u+h+|e+r+m+|e+u+h+|h+m+|m+h*m+)(?![\p{L}'’-])([,.…?!]*)/giu;
+const BACKCHANNEL = new Set(['yeah', 'yes', 'yep', 'ok', 'okay', 'right', 'sure', 'ouais', 'oui', 'ok.', 'bien', 'hein', 'voilà', 'oo', 'sige', 'like', 'so']);
+const words = (t) => (t.match(/[\p{L}\p{N}'’-]+/gu) || []).length;
+function tidy(t) {
+  // "of, uh, of" keeps one comma; "Um, my" loses both; "umbrellas, uhm." keeps the full stop
+  let x = String(t || '').replace(HESITATE, (m, lead, trail) => (trail && /[.?!…]/.test(trail) ? trail.replace(/,/g, '') : lead && trail ? ',' : ''));
+  x = x.replace(/\b([\p{L}'’]+)(?:,?\s+\1\b)+/giu, '$1'); // stutters: "I, I" -> "I"
+  x = x.replace(/\b([\p{L}'’]+\s+[\p{L}'’]+)(?:,\s+\1\b)+/giu, '$1'); // "I have, I have" -> "I have"
+  x = x.replace(/\s+([,.!?…])/g, '$1').replace(/([,.!?…])(?:\s*[,.…])+/g, '$1').replace(/^[\s,.;:…-]+/, '').replace(/\s{2,}/g, ' ').trim();
+  return x ? x[0].toUpperCase() + x.slice(1) : '';
+}
+function onlyFiller(t) {
+  const ws = (t.toLowerCase().match(/[\p{L}\p{N}'’-]+/gu) || []);
+  return !ws.length || (ws.length <= 2 && ws.every((w) => BACKCHANNEL.has(w)));
+}
+function heardLangs() { try { return JSON.parse(localStorage.getItem('vl-heard') || '[]'); } catch { return []; } }
+function rememberLang(code) {
+  const c = String(code).split('-')[0]; const list = [c, ...heardLangs().filter((x) => x !== c)].slice(0, 3);
+  try { localStorage.setItem('vl-heard', JSON.stringify(list)); } catch {}
+}
 const nearBottom = () => EL.scroll.scrollHeight - EL.scroll.scrollTop - EL.scroll.clientHeight < 140;
 const scrollDown = () => { EL.scroll.scrollTop = EL.scroll.scrollHeight; };
 
 function addEntry(spk, text, start, end, quiet = false, given = null, heard = null) {
+  text = tidy(text);
+  if (onlyFiller(text)) return;
+  if (given) given = { ...given, text: tidy(given.text) || text };
   EL.empty.hidden = true;
   const stick = nearBottom();
   const e = { spk, text, tr: null, lang: null, at: new Date(), start, end };
@@ -1504,11 +1530,20 @@ function connectSoniox(l) {
   sock.binaryType = 'arraybuffer';
   sock.onopen = () => {
     if (my !== gen || l.dead) { try { sock.close(); } catch {} return; }
-    const hints = S.from === 'auto' || S.from === 'multi' ? ['tl', 'en'] : [S.from];
+    // Soft hints only: Soniox still hears any language. In auto, hint the languages this person
+    // actually uses (their target, their browser's languages, and what VocaLink has heard from them before).
+    const base = (c) => String(c || '').split('-')[0].toLowerCase();
+    const hints = S.from === 'auto' || S.from === 'multi'
+      ? [...new Set([base(S.to), ...heardLangs(), ...(navigator.languages || []).map(base), 'en'].filter(Boolean))].slice(0, 5)
+      : [S.from];
     sock.send(JSON.stringify({
       api_key: S.sonioxKey, model: 'stt-rt-v6', audio_format: 'pcm_s16le', sample_rate: 16000, num_channels: 1,
       language_hints: hints, enable_language_identification: true, enable_endpoint_detection: true,
       enable_speaker_diarization: !!S.diarize,
+      context: {
+        general: [{ key: 'domain', value: 'A live voice call between friends' }, { key: 'style', value: 'Spoken and informal; people may switch languages mid-sentence' }],
+        terms: [...new Set([...Object.values(names), 'VocaLink', 'Discord'])].slice(0, 50),
+      },
       translation: { type: 'one_way', target_language: SONIOX_TARGET[S.to] || S.to },
     }));
     l.open = true; l.retries = 0;
@@ -1552,12 +1587,19 @@ function onSoniox(l, d) {
     const isTr = t.translation_status === 'translation';
     const inTarget = !!t.language && t.language.split('-')[0] === target;
     if (!t.is_final) { if (isTr) { if (inTarget) tentTr += t.text; } else tent += t.text; continue; }
-    if (t.text === '<end>' || t.text === '<fin>') { l.sx.ended = true; scheduleSoniox(l); continue; }
+    if (t.text === '<end>' || t.text === '<fin>') {
+      // a short fragment ("I, uh") usually continues: wait a little longer for the rest of it
+      const o = tidy(l.sx.orig);
+      if (t.text === '<end>' && o && words(o) < 4 && !/[?!]\s*$/.test(o)) { clearTimeout(l.sxTimer); l.sxTimer = setTimeout(() => sonioxEmit(l), 1800); }
+      else { l.sx.ended = true; scheduleSoniox(l); }
+      continue;
+    }
     let x = l.sx;
     if (!isTr) {
       // new speech after the end of a sentence, or a different speaker: finish the last line first
       const spk = t.speaker != null ? String(t.speaker) : null;
       if (x.orig.trim() && (x.ended || (S.diarize && spk && x.spk && spk !== x.spk))) { sonioxEmit(l); x = l.sx; }
+      else if (!x.ended) clearTimeout(l.sxTimer); // more words for a held fragment
       x.orig += t.text;
       if (typeof t.start_ms === 'number' && x.start == null) x.start = l.offset + t.start_ms / 1000;
       if (typeof t.end_ms === 'number') x.end = l.offset + t.end_ms / 1000;
@@ -1585,6 +1627,7 @@ function sonioxEmit(l) {
   const text = x.orig.trim();
   if (!text) { showLive('', ''); return; }
   const lang = [...x.langs].sort((a, b) => b[1] - a[1])[0];
+  if (lang) rememberLang(lang[0]);
   const spk = S.diarize && x.spk ? Math.max(0, parseInt(x.spk, 10) - 1 || 0) : null;
   const now = sessionT0 ? (performance.now() - sessionT0) / 1000 : 0;
   const d = Math.max(0.6, (x.end || 0) - (x.start || 0));
